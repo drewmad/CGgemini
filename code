@@ -15,7 +15,7 @@ import {
     Award, // For "Guaranteed Maximum Coverage"
     Paperclip, // For "One-Click Claim Documentation"
     Activity, // For "Real-Time Claim Progress"
-    Twitter, Linkedin, Facebook, // For Footer
+    /* Twitter icon removed */ /* Linkedin, Facebook removed */ // For Footer. X icon is already imported.
     Rocket, // For new section
     Target, // For new section
     Sparkles // For new section
@@ -80,7 +80,7 @@ const mockNlpProcess = async (query, policyText) => {
   return `I couldn't find specific information about "${query}" in the selected policy/document. Could you try rephrasing?`;
 };
 
-// Navbar Component - "Sign In" directs to dashboard
+// Navbar Component - UPDATED: Removed text Sign In, renamed button
 const Navbar = ({ navigateToDashboard }) => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const navLinks = [ { name: 'Features', href: '#' }, { name: 'Pricing', href: '#' }, { name: 'About', href: '#' }, ];
@@ -91,11 +91,6 @@ const Navbar = ({ navigateToDashboard }) => {
     setIsMobileMenuOpen(false); // Close mobile menu if open
   };
   
-  const handleGetStarted = () => {
-    navigateToDashboard();
-    setIsMobileMenuOpen(false);
-  }
-
   return ( 
     <nav className="bg-[#1f2937] bg-opacity-40 backdrop-blur-xs shadow-[0_4px_30px_rgba(0,0,0,0.1)] border border-white/5 text-white p-4 fixed w-full top-0 z-50"> 
       <div className="container mx-auto flex justify-between items-center"> 
@@ -105,8 +100,9 @@ const Navbar = ({ navigateToDashboard }) => {
         </div> 
         <div className="hidden md:flex space-x-6 items-center"> 
           {navLinks.map((link) => ( <a key={link.name} href={link.href} className={`text-gray-300 hover:text-[#00e5ff] transition-colors ${focusRingClasses}`}> {link.name} </a> ))} 
-          <button onClick={handleSignIn} className={`text-gray-300 hover:text-[#00e5ff] transition-colors ${focusRingClasses}`}>Sign In</button> 
-          <button onClick={handleGetStarted} className={`inline-flex items-center justify-center gap-2 px-4 py-2 rounded-md text-white bg-gradient-to-r from-[#0057e7] to-[#00e5ff] transition transform-gpu hover:scale-[1.02] active:scale-95 ${focusRingClasses}`} > Get Started </button> 
+          {/* Removed the text Sign In link */}
+          {/* Renamed Request Access button to Sign In */}
+          <button onClick={handleSignIn} className={`inline-flex items-center justify-center gap-2 px-4 py-2 rounded-md text-white bg-gradient-to-r from-[#0057e7] to-[#00e5ff] transition transform-gpu hover:scale-[1.02] active:scale-95 ${focusRingClasses}`} > Sign In </button> 
         </div> 
         <div className="md:hidden"> 
           <button onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} aria-label="Toggle menu" className={focusRingClasses}> 
@@ -117,8 +113,8 @@ const Navbar = ({ navigateToDashboard }) => {
       {isMobileMenuOpen && ( 
         <div className="md:hidden mt-4 space-y-4 p-4 bg-[#1f2937] bg-opacity-60 backdrop-blur-sm rounded-lg border border-white/10"> 
           {navLinks.map((link) => ( <a key={link.name} href={link.href} className={`block py-2 text-gray-300 hover:text-[#00e5ff] transition-colors ${focusRingClasses}`}> {link.name} </a> ))} 
-          <button onClick={handleSignIn} className={`block w-full text-left py-2 text-gray-300 hover:text-[#00e5ff] transition-colors ${focusRingClasses}`}>Sign In</button> 
-          <button onClick={handleGetStarted} className={`w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-md text-white bg-gradient-to-r from-[#0057e7] to-[#00e5ff] transition transform-gpu hover:scale-[1.02] active:scale-95 text-center ${focusRingClasses}`} > Get Started </button> 
+          {/* Updated button text and action */}
+          <button onClick={handleSignIn} className={`w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-md text-white bg-gradient-to-r from-[#0057e7] to-[#00e5ff] transition transform-gpu hover:scale-[1.02] active:scale-95 text-center ${focusRingClasses}`} > Sign In </button> 
         </div> 
       )} 
     </nav> 
@@ -135,7 +131,7 @@ const App = () => {
   return ( <div className="min-h-screen bg-gray-900 text-gray-100 font-sans leading-relaxed selection:bg-[#0057e7]/80 selection:text-white"> <Navbar navigateToDashboard={() => navigate('dashboard')} /> <div className="pt-16"> {currentPage === 'home' && <HomePage navigateToDashboard={() => navigate('dashboard')} />} {currentPage === 'dashboard' && <DashboardPage activeTab={activeTab} switchTab={switchTab} navigateHome={() => navigate('home')} />} </div> </div> );
 };
 
-// Home Page Component - Testimonials section updated
+// Home Page Component - UPDATED: "Try me" button renamed and action updated, Footer icons updated
 const HomePage = ({ navigateToDashboard }) => {
   const focusRingClasses = "focus-visible:ring-2 focus-visible:ring-[#00e5ff]";
   const glassCardClasses = "p-6 md:p-8 backdrop-blur-xs shadow-[0_4px_30px_rgba(0,0,0,0.1)] rounded-lg bg-[#1f2937] bg-opacity-40 border border-white/5 hover:border-white/10 transition-all duration-300";
@@ -143,13 +139,16 @@ const HomePage = ({ navigateToDashboard }) => {
   const howItWorksSteps = [ { icon: <FileSearch size={32} className="text-[#00e5ff]" />, title: "Policy Insight", description: "Upload policies, get insights on risks, gaps, and savings." }, { icon: <Edit3 size={32} className="text-[#00e5ff]" />, title: "Document Your Loss", description: "Easily upload photos, values, costs, and describe your damage or loss." }, { icon: <Cpu size={32} className="text-[#00e5ff]" />, title: "AI-Enhanced Claims Processing", description: "AI generated accurate, insurance-ready claim support documents automatically." }, { icon: <Briefcase size={32} className="text-[#00e5ff]" />, title: "Track, Settle, and Recover", description: "Track claims, payouts, and connect with resources/licensed contractors." }, ];
   const whyStandsOutFeatures = [ { icon: <ClipboardList size={28} className="text-[#0057e7]" />, title: "Actionable Policy Insights", description: "Instantly see exactly what's covered—and what's not—in clear, simple language." }, { icon: <AlertTriangle size={28} className="text-[#0057e7]" />, title: "Proactive Claims Alerts", description: "Receive timely reminders for critical deadlines, documentation requests, and required actions, keeping your claim on track." }, { icon: <Settings2 size={28} className="text-[#0057e7]" />, title: "Intelligent Claims Processing", description: "AI accelerates claim validation, reduces friction, detects potential fraud, and ensures rapid payouts." }, { icon: <Award size={28} className="text-[#0057e7]" />, title: "Guaranteed Maximum Coverage", description: "Automatically matches losses to your policy, ensuring every eligible dollar is identified and documented—leaving no money unclaimed." }, { icon: <Paperclip size={28} className="text-[#0057e7]" />, title: "One-Click Claim Documentation", description: "Simplify claim preparation—upload documents/photos, and ClaimGuardian instantly compiles organized, insurer-ready claim documentation." }, { icon: <Activity size={28} className="text-[#0057e7]" />, title: "Real-Time Claim Progress", description: "Follow your claim's status, payments, and timelines effortlessly, directly from any device." }, ];
   
-  // Updated section content - replacing testimonials
   const visionFeatures = [
     { icon: <Rocket size={28} className="text-[#0057e7]" />, title: "Disrupting the Status Quo", description: "We believe managing insurance and navigating claims shouldn't be a fight. ClaimGuardian is built to level the playing field." },
     { icon: <Target size={28} className="text-[#0057e7]" />, title: "Empowering Policyholders", description: "Our AI-driven insights and streamlined processes put you back in control, ensuring clarity and maximizing your rightful recovery." },
     { icon: <Sparkles size={28} className="text-[#0057e7]" />, title: "The Future of Claims", description: "Experience a faster, fairer, and more transparent claims process designed for the modern world. Get ready for the change." },
   ];
 
+  // Handler for both "Get Started" / "Request Access" and the new "Sign In" button
+  const handleSignIn = () => {
+      navigateToDashboard(); 
+  };
 
   return ( 
     <div className="flex flex-col items-center justify-center min-h-[calc(100vh-4rem)] pt-12 pb-16 px-4 md:px-8 text-center overflow-x-hidden">
@@ -157,7 +156,11 @@ const HomePage = ({ navigateToDashboard }) => {
       <section className="relative z-10 max-w-4xl mb-20 md:mb-32 pt-10 md:pt-16">
         <h1 className="text-5xl md:text-7xl font-bold mb-6 text-[#0057e7] tracking-tight"> ClaimGuardian </h1>
         <p className="text-xl md:text-2xl text-gray-300 mb-10 leading-relaxed max-w-2xl mx-auto"> Insurance companies push back. ClaimGuardian pushes harder—so you don't have to. </p>
-        <div className="flex flex-col sm:flex-row justify-center items-center space-y-4 sm:space-y-0 sm:space-x-6"> <button onClick={navigateToDashboard} className={`w-full sm:w-auto inline-flex items-center justify-center gap-2 px-8 py-3.5 rounded-lg text-white bg-gradient-to-r from-[#0057e7] to-[#00e5ff] transition transform-gpu hover:scale-[1.03] active:scale-95 text-lg font-semibold ${focusRingClasses}`} > Get Started </button> <button onClick={() => alert("Placeholder for 'Try me' feature or demo.")} className={`w-full sm:w-auto px-8 py-3.5 rounded-lg bg-gray-700 text-gray-100 hover:bg-gray-600 transition-colors text-lg font-semibold border border-gray-600 ${focusRingClasses}`} > Try me </button> </div>
+        <div className="flex flex-col sm:flex-row justify-center items-center space-y-4 sm:space-y-0 sm:space-x-6"> 
+          <button onClick={handleSignIn} className={`w-full sm:w-auto inline-flex items-center justify-center gap-2 px-8 py-3.5 rounded-lg text-white bg-gradient-to-r from-[#0057e7] to-[#00e5ff] transition transform-gpu hover:scale-[1.03] active:scale-95 text-lg font-semibold ${focusRingClasses}`} > Get Started </button> 
+          {/* Updated "Try me" button to "Sign In" and linked to handleSignIn */}
+          <button onClick={handleSignIn} className={`w-full sm:w-auto px-8 py-3.5 rounded-lg bg-gray-700 text-gray-100 hover:bg-gray-600 transition-colors text-lg font-semibold border border-gray-600 ${focusRingClasses}`} > Sign In </button> 
+        </div>
       </section>
 
       {/* How ClaimGuardian Works Section */}
@@ -183,14 +186,13 @@ const HomePage = ({ navigateToDashboard }) => {
          <p className="text-lg text-gray-300 leading-relaxed"> Because insurance is complicated, claims are overwhelming, and recovery is stressful. ClaimGuardian simplifies your coverage, expertly manages claims, and connects you to resources—ensuring you're protected, supported, and made whole. </p>
       </section>
 
-      {/* UPDATED: Replaced Testimonials Section with Vision Section */}
+      {/* Vision Section (Formerly Testimonials) */}
       <section className="w-full max-w-5xl mb-20 md:mb-32 px-4">
         <h2 className="text-3xl md:text-4xl font-bold text-gray-100 mb-4 text-center">Get Ready for the Change</h2>
         <p className="text-gray-400 mb-12 md:mb-16 text-center max-w-2xl mx-auto leading-relaxed">
             ClaimGuardian is poised to transform the insurance experience. Here's a glimpse of the future we're building.
         </p>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-8">
-          {/* New content replacing testimonials */}
           {visionFeatures.map((feature, index) => (
             <div key={index} className={`${glassCardClasses} flex flex-col text-center`}>
                <div className="flex justify-center mb-4">
@@ -207,10 +209,10 @@ const HomePage = ({ navigateToDashboard }) => {
       <section className="w-full max-w-4xl mb-20 md:mb-32 px-4 text-center py-12 md:py-16 bg-[#1f2937] bg-opacity-30 rounded-xl border border-white/5 shadow-xl">
         <h2 className="text-3xl md:text-4xl font-bold text-gray-100 mb-4">Ready for Complete Insurance Confidence?</h2>
         <p className="text-lg text-gray-300 mb-8 max-w-2xl mx-auto leading-relaxed"> Discover why people trust ClaimGuardian to simplify policies, streamline claims, and secure full recovery. </p>
-        <button onClick={navigateToDashboard} className={`inline-flex items-center justify-center gap-2 px-10 py-4 rounded-lg text-white bg-gradient-to-r from-[#0057e7] to-[#00e5ff] transition transform-gpu hover:scale-[1.03] active:scale-95 text-lg font-semibold ${focusRingClasses}`} > Guard Your Coverage Now </button>
+        <button onClick={handleSignIn} className={`inline-flex items-center justify-center gap-2 px-10 py-4 rounded-lg text-white bg-gradient-to-r from-[#0057e7] to-[#00e5ff] transition transform-gpu hover:scale-[1.03] active:scale-95 text-lg font-semibold ${focusRingClasses}`} > Get Started Now </button> {/* Changed text for variety */}
       </section>
 
-      {/* Footer */}
+      {/* Footer - Removed LinkedIn and Facebook */}
       <footer className="w-full border-t border-gray-700 pt-12 pb-8">
         <div className="container mx-auto px-6 md:px-8">
             <div className="grid grid-cols-1 md:grid-cols-4 gap-8 mb-8">
@@ -218,7 +220,14 @@ const HomePage = ({ navigateToDashboard }) => {
                 <div> <h5 className="text-md font-semibold text-gray-200 mb-3">Product</h5> <ul className="space-y-2"> <li><a href="#" className={`text-sm text-gray-400 hover:text-[#00e5ff] transition-colors ${focusRingClasses}`}>Features</a></li> <li><a href="#" className={`text-sm text-gray-400 hover:text-[#00e5ff] transition-colors ${focusRingClasses}`}>Pricing</a></li> <li><a href="#" className={`text-sm text-gray-400 hover:text-[#00e5ff] transition-colors ${focusRingClasses}`}>Integrations (Soon)</a></li> </ul> </div>
                 <div> <h5 className="text-md font-semibold text-gray-200 mb-3">Company</h5> <ul className="space-y-2"> <li><a href="#" className={`text-sm text-gray-400 hover:text-[#00e5ff] transition-colors ${focusRingClasses}`}>About</a></li> <li><a href="#" className={`text-sm text-gray-400 hover:text-[#00e5ff] transition-colors ${focusRingClasses}`}>Privacy Policy</a></li> <li><a href="#" className={`text-sm text-gray-400 hover:text-[#00e5ff] transition-colors ${focusRingClasses}`}>Terms of Service</a></li> </ul> </div>
             </div>
-            <div className="border-t border-gray-700 pt-8 flex flex-col sm:flex-row justify-between items-center"> <p className="text-xs text-gray-500">&copy; {new Date().getFullYear()} ClaimGuardian. All rights reserved.</p> <div className="flex space-x-4 mt-4 sm:mt-0"> <a href="#" aria-label="Twitter" className={`text-gray-500 hover:text-[#00e5ff] ${focusRingClasses}`}><Twitter size={20}/></a> <a href="#" aria-label="LinkedIn" className={`text-gray-500 hover:text-[#00e5ff] ${focusRingClasses}`}><Linkedin size={20}/></a> <a href="#" aria-label="Facebook" className={`text-gray-500 hover:text-[#00e5ff] ${focusRingClasses}`}><Facebook size={20}/></a> </div> </div>
+            <div className="border-t border-gray-700 pt-8 flex flex-col sm:flex-row justify-between items-center"> 
+              <p className="text-xs text-gray-500">&copy; {new Date().getFullYear()} ClaimGuardian. All rights reserved.</p> 
+              <div className="flex space-x-4 mt-4 sm:mt-0"> 
+                {/* Only X icon remains */}
+                <a href="#" aria-label="X (formerly Twitter)" className={`text-gray-500 hover:text-[#00e5ff] ${focusRingClasses}`}><X size={18}/></a> 
+                {/* LinkedIn and Facebook removed */}
+              </div> 
+            </div>
         </div>
       </footer>
     </div> 
