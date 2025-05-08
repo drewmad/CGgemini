@@ -24,7 +24,11 @@ import {
     Library, // For Resources
     PieChart, // For Analytics
     Package, // For Asset Management
-    UsersRound // For Social
+    UsersRound, // For Social
+    Sailboat, // For Watercraft
+    Bike, // For Rec Vehicle (Placeholder)
+    Gem, // For Valuables
+    Check // For selected category
 } from 'lucide-react';
 
 // Mock Supabase client (replace with actual Supabase client in a real project)
@@ -42,7 +46,8 @@ const supabase = {
     insert: async (data) => {
       console.log(`Mock inserting data to ${table}:`, data);
       await new Promise(resolve => setTimeout(resolve, 500));
-      return { data: [data], error: null };
+      // Simulate returning the inserted data with an ID
+      return { data: [{...data, id: `mock_${table}_${Date.now()}`}], error: null }; 
     },
     select: async (fields = '*') => {
       console.log(`Mock selecting ${fields} from ${table}`);
@@ -254,7 +259,7 @@ const HomePage = ({ navigateToDashboard }) => {
   );
 };
 
-// Dashboard Page Component - UPDATED: Added new future features
+// Dashboard Page Component
 const DashboardPage = ({ activeTab, switchTab, navigateHome }) => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const focusRingClasses = "focus-visible:ring-2 focus-visible:ring-[#00e5ff]";
@@ -276,7 +281,7 @@ const DashboardPage = ({ activeTab, switchTab, navigateHome }) => {
           <LayoutDashboard className="h-6 w-6 text-[#0057e7] mr-2" /> 
           <h2 className="text-lg font-semibold text-gray-100">Dashboard Menu</h2> 
         </div> 
-        <nav className="flex-1 p-4 space-y-2 overflow-y-auto"> {/* Added overflow-y-auto */}
+        <nav className="flex-1 p-4 space-y-2 overflow-y-auto"> 
           <DashboardTab icon={<LayoutDashboard size={20} />} label="Dashboard Home" isActive={activeTab === 'dashboardHome'} onClick={() => switchTab('dashboardHome')} /> 
           <DashboardTab icon={<Building size={20} />} label="Properties" isActive={activeTab === 'properties'} onClick={() => switchTab('properties')} /> 
           <DashboardTab icon={<UploadCloud size={20} />} label="Upload Policy" isActive={activeTab === 'uploadPolicy'} onClick={() => switchTab('uploadPolicy')} /> 
@@ -285,14 +290,13 @@ const DashboardPage = ({ activeTab, switchTab, navigateHome }) => {
           <p className="px-3 pt-4 pb-2 text-xs font-medium text-gray-500 uppercase">Future Features</p> 
           <DashboardTab icon={<Search size={20} />} label="Claim Tracking" isDisabled={true} /> 
           <DashboardTab icon={<FileText size={20} />} label="Policy Comparison" isDisabled={true} /> 
-          {/* New Future Features */}
           <DashboardTab icon={<HeartHandshake size={20} />} label="Recovery" isDisabled={true} /> 
           <DashboardTab icon={<Library size={20} />} label="Resources" isDisabled={true} /> 
           <DashboardTab icon={<PieChart size={20} />} label="Analytics" isDisabled={true} /> 
           <DashboardTab icon={<Package size={20} />} label="Asset & Inventory" isDisabled={true} /> 
           <DashboardTab icon={<UsersRound size={20} />} label="Social" isDisabled={true} /> 
         </nav> 
-        <div className="p-4 border-t border-gray-700 mt-auto"> {/* Added mt-auto */}
+        <div className="p-4 border-t border-gray-700 mt-auto"> 
           <DashboardTab icon={<Settings size={20} />} label="Settings" isDisabled={true}/> 
           <DashboardTab icon={<HelpCircle size={20} />} label="Help & Support" isDisabled={true}/> 
           <DashboardTab icon={<LogOut size={20} />} label="Logout" onClick={navigateHome} /> 
@@ -506,7 +510,258 @@ const PropertyList = ({ properties, onViewDetail, onAddNew, glassPanelClasses, f
 const PropertyCard = ({ property, onViewDetail, glassCardClasses, focusRingClasses }) => { return ( <div className={`${glassCardClasses} flex flex-col justify-between cursor-pointer hover:border-[#0057e7]/50 transition-all duration-300 group`} onClick={() => onViewDetail(property)}> <div> <img src={property.image_url || `https://placehold.co/600x400/1f2937/4a5568?text=${encodeURIComponent(property.name)}`} alt={property.name} className="w-full h-48 object-cover rounded-md mb-4" onError={(e) => e.target.src='https://placehold.co/600x400/1f2937/4a5568?text=Image+Error'}/> <h3 className="text-xl font-semibold text-gray-100 mb-1 group-hover:text-[#00e5ff] transition-colors">{property.name}</h3> <p className="text-sm text-gray-400 mb-1 flex items-center"><MapPin size={14} className="mr-1.5 flex-shrink-0" /> {property.address}</p> <p className="text-sm text-gray-500 mb-2">{property.type}</p> </div> <div className="mt-auto pt-3 border-t border-white/10"> <div className="flex justify-between items-center text-sm"> <span className="text-gray-400">Value: <span className="font-semibold text-gray-200">${property.value?.toLocaleString() || 'N/A'}</span></span> <button className={`text-xs text-[#0057e7] hover:text-[#00e5ff] font-semibold py-1 px-2 rounded-md group-hover:bg-gray-700 transition-colors ${focusRingClasses}`}> View Details <Eye size={14} className="inline ml-1" /> </button> </div> <p className="text-xs text-gray-500 mt-1">Added: {new Date(property.created_at).toLocaleDateString()}</p> </div> </div> ); };
 // PropertyDetail Component
 const PropertyDetail = ({ property, onBack, glassPanelClasses, focusRingClasses }) => { const [activeSubTab, setActiveSubTab] = useState('location'); const insurability = { rating: 'B+', issues: ['Minor flood zone proximity (Zone X shaded)', 'Roof older than 15 years'] }; const estimatedPremium = { amount: 1250, currency: 'USD' }; const documents = [ {id: 'doc1', name: 'Purchase Agreement.pdf', type: 'Agreement', date: '2024-01-10'}, {id: 'doc2', name: 'Inspection Report.pdf', type: 'Report', date: '2024-01-05'} ]; const clients = [ {id: 'client1', name: 'John & Jane Doe', role: 'Owner'} ]; const DetailTabButton = ({ label, tabName, icon: Icon }) => ( <button onClick={() => setActiveSubTab(tabName)} className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium rounded-t-md transition-colors ${focusRingClasses} ${activeSubTab === tabName ? 'bg-gray-700 text-[#00e5ff]' : 'text-gray-300 hover:bg-gray-600 hover:text-gray-100'}`} > <Icon size={16} /> {label} </button> ); return ( <div className={`${glassPanelClasses} p-0`}> <div className="p-6 flex justify-between items-center border-b border-white/10"> <h2 className="text-2xl font-semibold text-gray-100">{property.name}</h2> <button onClick={onBack} className={`inline-flex items-center gap-2 px-4 py-2 rounded-md bg-gray-700 text-gray-100 hover:bg-gray-600 transition-colors ${focusRingClasses}`}> <ChevronLeft size={20} /> Back to List </button> </div> <div className="p-6 grid grid-cols-1 lg:grid-cols-3 gap-6"> <div className="lg:col-span-1 space-y-6"> <img src={property.image_url || `https://placehold.co/600x400/1f2937/4a5568?text=${encodeURIComponent(property.name)}`} alt={property.name} className="w-full h-auto object-cover rounded-lg shadow-lg" onError={(e) => e.target.src='https://placehold.co/600x400/1f2937/4a5568?text=Image+Error'}/> <div className="bg-gray-700/50 p-4 rounded-lg space-y-2"> <h3 className="text-lg font-semibold text-gray-200 border-b border-gray-600 pb-2 mb-2">Key Information</h3> <p className="text-sm text-gray-300"><strong>Type:</strong> {property.type}</p> <p className="text-sm text-gray-300"><strong>Address:</strong> {property.address}</p> <p className="text-sm text-gray-300"><strong>Value:</strong> ${property.value?.toLocaleString() || 'N/A'}</p> {property.bedrooms && <p className="text-sm text-gray-300"><strong>Bedrooms:</strong> {property.bedrooms}</p>} {property.bathrooms && <p className="text-sm text-gray-300"><strong>Bathrooms:</strong> {property.bathrooms}</p>} {property.sqft && <p className="text-sm text-gray-300"><strong>SqFt:</strong> {property.sqft?.toLocaleString()}</p>} {property.make && <p className="text-sm text-gray-300"><strong>Make:</strong> {property.make}</p>} {property.model && <p className="text-sm text-gray-300"><strong>Model:</strong> {property.model}</p>} {property.year && <p className="text-sm text-gray-300"><strong>Year:</strong> {property.year}</p>} </div> </div> <div className="lg:col-span-2"> <div className="flex border-b border-gray-700 mb-0"> <DetailTabButton label="Location/Details" tabName="location" icon={Info} /> <DetailTabButton label="Map" tabName="map" icon={Map} /> <DetailTabButton label="Documents" tabName="documents" icon={FileDigit} /> <DetailTabButton label="Clients" tabName="clients" icon={Users} /> </div> <div className="py-6 bg-gray-800/30 rounded-b-lg min-h-[300px]"> {activeSubTab === 'location' && ( <div className="px-6 space-y-3"> <h4 className="text-lg font-semibold text-gray-200">Property Metrics</h4> <p className="text-sm text-gray-400">Detailed attributes and characteristics of the property.</p> </div> )} {activeSubTab === 'map' && ( <div className="px-6 text-center"> <h4 className="text-lg font-semibold text-gray-200 mb-2">Interactive Map & Street View</h4> <div className="h-64 bg-gray-700 rounded-md flex items-center justify-center text-gray-500 mb-4">[Google Maps Embed Placeholder for {property.address}]</div> <div className="h-40 bg-gray-700 rounded-md flex items-center justify-center text-gray-500">[Street View Placeholder]</div> <p className="text-xs text-gray-500 mt-2">Map integration requires Google Maps API setup.</p> <div className="mt-4 space-x-2"> <button className={`px-3 py-1.5 text-xs rounded-md bg-gray-600 text-gray-300 hover:bg-gray-500 ${focusRingClasses}`}>Nearby Schools (N/A)</button> <button className={`px-3 py-1.5 text-xs rounded-md bg-gray-600 text-gray-300 hover:bg-gray-500 ${focusRingClasses}`}>Restaurants (N/A)</button> </div> </div> )} {activeSubTab === 'documents' && ( <div className="px-6"> <h4 className="text-lg font-semibold text-gray-200 mb-3">Associated Documents</h4> {documents.length > 0 ? ( <ul className="space-y-2"> {documents.map(doc => ( <li key={doc.id} className="p-3 bg-gray-700/70 rounded-md flex justify-between items-center text-sm"> <div><FileText size={16} className="inline mr-2 text-[#00e5ff]" />{doc.name} <span className="text-xs text-gray-400">({doc.type})</span></div> <span className="text-xs text-gray-500">{doc.date}</span> </li> ))} </ul> ) : <p className="text-sm text-gray-400">No documents associated.</p>} </div> )} {activeSubTab === 'clients' && ( <div className="px-6"> <h4 className="text-lg font-semibold text-gray-200 mb-3">Associated Clients</h4> {clients.length > 0 ? ( <ul className="space-y-2"> {clients.map(client => ( <li key={client.id} className="p-3 bg-gray-700/70 rounded-md text-sm"> <Users size={16} className="inline mr-2 text-[#00e5ff]" />{client.name} <span className="text-xs text-gray-400">({client.role})</span> </li> ))} </ul> ) : <p className="text-sm text-gray-400">No clients associated.</p>} </div> )} </div> </div> </div> <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-6 border-t border-white/10"> <div className="bg-gray-700/50 p-4 rounded-lg"> <h3 className="text-lg font-semibold text-gray-200 mb-2 flex items-center"><ShieldAlert size={20} className="mr-2 text-[#f59e0b]" /> Insurability Assessment</h3> <p className="text-3xl font-bold text-[#10b981] mb-1">{insurability.rating} <span className="text-sm font-normal text-gray-400">(Mock Rating)</span></p> {insurability.issues.length > 0 && ( <ul className="list-disc list-inside text-sm text-yellow-400 space-y-1 mt-2"> {insurability.issues.map((issue, i) => <li key={i}>{issue}</li>)} </ul> )} </div> <div className="bg-gray-700/50 p-4 rounded-lg"> <h3 className="text-lg font-semibold text-gray-200 mb-2 flex items-center"><DollarSign size={20} className="mr-2 text-[#00e5ff]" /> Estimated Premium</h3> <p className="text-3xl font-bold text-gray-100 mb-1">${estimatedPremium.amount.toLocaleString()} <span className="text-sm font-normal text-gray-400">/ year (Mock)</span></p> <button className={`mt-3 w-full inline-flex items-center justify-center gap-2 px-4 py-2 rounded-md text-white bg-gradient-to-r from-[#0057e7] to-[#00e5ff] transition transform-gpu hover:scale-[1.02] active:scale-95 ${focusRingClasses}`}> Request Formal Quote </button> </div> </div> </div> ); };
-// PropertyForm Component
-const PropertyForm = ({ onCancel, onSubmit, glassPanelClasses, focusRingClasses }) => { const [step, setStep] = useState(1); const [propertyType, setPropertyType] = useState('real_estate'); const [formData, setFormData] = useState({ name: '', address: '', type: 'primary', purchase_price: '', purchase_date: '', description: '', bedrooms: '', bathrooms: '', sqft: '', lot_size: '', year_built: '', make: '', model: '', year: '', vin: '', photos: [], documents: [] }); const handleChange = (e) => { const { name, value } = e.target; setFormData(prev => ({ ...prev, [name]: value })); }; const handleFileChange = (e, fieldName) => { setFormData(prev => ({ ...prev, [fieldName]: [...prev[fieldName], ...Array.from(e.target.files)] })); }; const nextStep = () => setStep(prev => prev + 1); const prevStep = () => setStep(prev => prev - 1); const handleSubmit = (e) => { e.preventDefault(); console.log("Form Data Submitted:", formData); onSubmit(formData); }; const inputClasses = `w-full p-2.5 bg-gray-700 border border-gray-600 rounded-md outline-none text-gray-200 placeholder-gray-400 ${focusRingClasses} focus:border-transparent`; const labelClasses = "block text-sm font-medium text-gray-300 mb-1.5"; return ( <div className={`${glassPanelClasses} p-8`}> <div className="flex justify-between items-center mb-6"> <h2 className="text-2xl font-semibold text-gray-100">Add New Property (Step {step} of 3)</h2> <button onClick={onCancel} className={`inline-flex items-center gap-2 px-4 py-2 rounded-md bg-gray-700 text-gray-100 hover:bg-gray-600 transition-colors ${focusRingClasses}`}> Cancel </button> </div> <div className="w-full bg-gray-700 rounded-full h-2.5 mb-8"> <div className="bg-[#0057e7] h-2.5 rounded-full transition-all duration-300" style={{ width: `${(step / 3) * 100}%` }}></div> </div> <form onSubmit={handleSubmit} className="space-y-6"> {step === 1 && ( <section> <h3 className="text-xl font-semibold text-gray-200 mb-4">Property Basics</h3> <div> <label htmlFor="name" className={labelClasses}>Property Name / Nickname</label> <input type="text" name="name" id="name" value={formData.name} onChange={handleChange} className={inputClasses} placeholder="e.g., My Sunnyvale Home" required /> </div> <div> <label htmlFor="propertyType" className={labelClasses}>Property Category</label> <select name="propertyType" id="propertyType" value={propertyType} onChange={(e) => setPropertyType(e.target.value)} className={inputClasses}> <option value="real_estate">Real Estate</option> <option value="vehicle">Vehicle</option> </select> </div> {propertyType === 'real_estate' && ( <div> <label htmlFor="type" className={labelClasses}>Real Estate Type</label> <select name="type" id="type" value={formData.type} onChange={handleChange} className={inputClasses}> <option value="primary">Primary Residence</option> <option value="secondary">Secondary/Vacation Home</option> <option value="investment">Investment Property</option> <option value="land">Land</option> </select> </div> )} {propertyType === 'vehicle' && ( <div> <label htmlFor="type" className={labelClasses}>Vehicle Type</label> <input type="text" name="type" id="type" value={formData.type} onChange={handleChange} className={inputClasses} placeholder="e.g., Sedan, SUV, Motorcycle" /> </div> )} <div> <label htmlFor="purchase_price" className={labelClasses}>Purchase Price (Optional)</label> <input type="number" name="purchase_price" id="purchase_price" value={formData.purchase_price} onChange={handleChange} className={inputClasses} placeholder="e.g., 750000" /> </div> <div> <label htmlFor="purchase_date" className={labelClasses}>Purchase Date (Optional)</label> <input type="date" name="purchase_date" id="purchase_date" value={formData.purchase_date} onChange={handleChange} className={inputClasses} /> </div> <div> <label htmlFor="description" className={labelClasses}>Description (Optional)</label> <textarea name="description" id="description" value={formData.description} onChange={handleChange} rows="3" className={inputClasses} placeholder="Brief description or notes..."></textarea> </div> </section> )} {step === 2 && ( <section> <h3 className="text-xl font-semibold text-gray-200 mb-4">Location & Specifics</h3> {propertyType === 'real_estate' && ( <> <div> <label htmlFor="address" className={labelClasses}>Full Address</label> <input type="text" name="address" id="address" value={formData.address} onChange={handleChange} className={inputClasses} placeholder="Search with Google Places Autocomplete..." required /> <p className="text-xs text-gray-500 mt-1">Google Places Autocomplete to be integrated here.</p> </div> <div className="grid grid-cols-1 md:grid-cols-2 gap-4"> <div> <label htmlFor="bedrooms" className={labelClasses}>Bedrooms</label> <input type="number" name="bedrooms" id="bedrooms" value={formData.bedrooms} onChange={handleChange} className={inputClasses} /> </div> <div> <label htmlFor="bathrooms" className={labelClasses}>Bathrooms</label> <input type="number" name="bathrooms" id="bathrooms" step="0.5" value={formData.bathrooms} onChange={handleChange} className={inputClasses} /> </div> <div> <label htmlFor="sqft" className={labelClasses}>Square Footage</label> <input type="number" name="sqft" id="sqft" value={formData.sqft} onChange={handleChange} className={inputClasses} /> </div> <div> <label htmlFor="lot_size" className={labelClasses}>Lot Size (Acres)</label> <input type="number" name="lot_size" id="lot_size" step="0.01" value={formData.lot_size} onChange={handleChange} className={inputClasses} /> </div> <div> <label htmlFor="year_built" className={labelClasses}>Year Built</label> <input type="number" name="year_built" id="year_built" value={formData.year_built} onChange={handleChange} className={inputClasses} placeholder="YYYY" /> </div> </div> </> )} {propertyType === 'vehicle' && ( <> <div> <label htmlFor="make" className={labelClasses}>Make</label> <input type="text" name="make" id="make" value={formData.make} onChange={handleChange} className={inputClasses} required /> </div> <div> <label htmlFor="model" className={labelClasses}>Model</label> <input type="text" name="model" id="model" value={formData.model} onChange={handleChange} className={inputClasses} required /> </div> <div> <label htmlFor="year" className={labelClasses}>Year</label> <input type="number" name="year" id="year" value={formData.year} onChange={handleChange} className={inputClasses} placeholder="YYYY" required /> </div> <div> <label htmlFor="vin" className={labelClasses}>VIN</label> <input type="text" name="vin" id="vin" value={formData.vin} onChange={handleChange} className={inputClasses} required /> </div> </> )} </section> )} {step === 3 && ( <section> <h3 className="text-xl font-semibold text-gray-200 mb-4">Media & Documents</h3> <div> <label htmlFor="photos" className={labelClasses}>Upload Photos</label> <input type="file" name="photos" id="photos" multiple onChange={(e) => handleFileChange(e, 'photos')} className={`w-full text-sm text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-[#0057e7] file:text-white hover:file:bg-[#004abc] ${focusRingClasses}`} /> <p className="text-xs text-gray-500 mt-1">Option to use Google Street View as default (if address provided) coming soon.</p> {formData.photos.length > 0 && <div className="mt-2 text-xs text-gray-400">Files selected: {formData.photos.map(f => f.name).join(', ')}</div>} </div> <div> <label htmlFor="documents" className={labelClasses}>Upload Documents (e.g., Purchase Agreement, Title)</label> <input type="file" name="documents" id="documents" multiple onChange={(e) => handleFileChange(e, 'documents')} className={`w-full text-sm text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-[#0057e7] file:text-white hover:file:bg-[#004abc] ${focusRingClasses}`} /> {formData.documents.length > 0 && <div className="mt-2 text-xs text-gray-400">Files selected: {formData.documents.map(f => f.name).join(', ')}</div>} </div> </section> )} <div className="flex justify-between items-center pt-6 border-t border-gray-700"> <button type="button" onClick={onCancel} className={`px-6 py-2.5 rounded-md bg-gray-700 text-gray-100 hover:bg-gray-600 transition-colors ${focusRingClasses}`}> Cancel </button> <div> {step > 1 && ( <button type="button" onClick={prevStep} className={`px-6 py-2.5 rounded-md bg-gray-600 text-gray-200 hover:bg-gray-500 transition-colors mr-3 ${focusRingClasses}`}> <ChevronLeft size={18} className="inline mr-1" /> Previous </button> )} {step < 3 && ( <button type="button" onClick={nextStep} className={`px-6 py-2.5 rounded-md text-white bg-gradient-to-r from-[#0057e7] to-[#00e5ff] transition transform-gpu hover:scale-[1.02] active:scale-95 ${focusRingClasses}`}> Next <ChevronRight size={18} className="inline ml-1" /> </button> )} {step === 3 && ( <button type="submit" className={`px-6 py-2.5 rounded-md text-white bg-gradient-to-r from-[#10b981] to-[#00e5ff] transition transform-gpu hover:scale-[1.02] active:scale-95 ${focusRingClasses}`}> <FilePlus size={18} className="inline mr-1" /> Add Property </button> )} </div> </div> </form> </div> ); };
+
+// PropertyForm Component - REVISED based on detailed spec
+const PropertyForm = ({ onCancel, onSubmit, glassPanelClasses, focusRingClasses }) => {
+    const [step, setStep] = useState(0); // Start at step 0 for category selection
+    const [maxStepVisited, setMaxStepVisited] = useState(0); // Track progress
+    const [formData, setFormData] = useState({
+        category: '', // 'real_estate', 'vehicle', 'watercraft', 'rec_vehicle', 'valuables'
+        nickname: '',
+        subType: '',
+        purchasePrice: '',
+        purchaseDate: '',
+        description: '',
+        address: null, // Store address object/JSON
+        details: {}, // For category-specific fields (beds, baths, vin, make, etc.)
+        photos: [], // Array of file objects or URLs after upload
+        documents: [], // Array of file objects or URLs after upload
+        useStreetViewPhoto: false,
+    });
+
+    // Define categories and their subtypes/fields (Mock data, replace with actual definitions)
+    const categories = {
+        real_estate: { label: "Real Estate", icon: Building, subTypes: ["Primary Residence", "Secondary/Vacation Home", "Investment Property", "Land"], specificFields: ['address', 'bedrooms', 'bathrooms', 'sqft', 'lot_size', 'year_built'] },
+        vehicle: { label: "Vehicle", icon: Car, subTypes: ["Sedan", "SUV", "Truck", "Motorcycle", "Van"], specificFields: ['garaging_address', 'make', 'model', 'year', 'vin'] },
+        watercraft: { label: "Watercraft", icon: Sailboat, subTypes: ["Boat", "Jet Ski", "Yacht"], specificFields: ['hull_id', 'make', 'model', 'year', 'length'] },
+        rec_vehicle: { label: "Recreational Vehicle", icon: Bike, subTypes: ["RV/Motorhome", "ATV", "Snowmobile", "Trailer"], specificFields: ['make', 'model', 'year', 'vin'] },
+        valuables: { label: "Valuables", icon: Gem, subTypes: ["Jewelry", "Art", "Collectibles", "Electronics"], specificFields: ['item_description', 'appraisal_value', 'appraisal_date'] },
+    };
+
+    const commonFields = ['nickname', 'purchasePrice', 'purchaseDate', 'description'];
+    
+    // --- Validation (Placeholder) ---
+    // In a real app, use Zod schemas per step based on category
+    const isStepValid = (currentStep) => {
+        if (currentStep === 0) return !!formData.category; // Must select category
+        if (currentStep === 1) return !!formData.nickname; // Nickname required for basics
+        if (currentStep === 2) {
+            // Add basic validation for category-specific required fields (e.g., address for real_estate, VIN for vehicle)
+            if (formData.category === 'real_estate' && !formData.address) return false;
+            if (formData.category === 'vehicle' && !formData.details.vin) return false;
+            // Add more checks as needed
+            return true; 
+        }
+        if (currentStep === 3) return true; // Media step is optional for now
+        return false; 
+    };
+
+    const handleCategorySelect = (categoryKey) => {
+        setFormData(prev => ({ 
+            ...prev, 
+            category: categoryKey, 
+            subType: '', // Reset subtype when category changes
+            details: {} // Reset details
+        }));
+        setStep(1); // Auto-advance to next step
+        setMaxStepVisited(prev => Math.max(prev, 1));
+    };
+
+    const handleChange = (e) => {
+        const { name, value, type, checked } = e.target;
+        const val = type === 'checkbox' ? checked : value;
+        
+        // Handle nested 'details' fields
+        if (name.startsWith('details.')) {
+            const detailKey = name.split('.')[1];
+            setFormData(prev => ({ 
+                ...prev, 
+                details: { ...prev.details, [detailKey]: val } 
+            }));
+        } else {
+            setFormData(prev => ({ ...prev, [name]: val }));
+        }
+        // Autosave logic could be triggered here (e.g., debounced call)
+    };
+    
+    const handleFileChange = (e, fieldName) => {
+        // Mock file handling - store File objects temporarily
+        const files = Array.from(e.target.files);
+        setFormData(prev => ({ ...prev, [fieldName]: [...prev[fieldName], ...files] }));
+        // TODO: Implement actual upload logic (request presigned URLs, upload to S3)
+        console.log(`Files selected for ${fieldName}:`, files.map(f => f.name));
+    };
+
+    const nextStep = () => {
+        if (isStepValid(step)) {
+            const next = step + 1;
+            setStep(next);
+            setMaxStepVisited(prev => Math.max(prev, next));
+        } else {
+            // Optionally show validation errors
+            alert("Please fill in all required fields for this step.");
+        }
+    };
+    const prevStep = () => setStep(prev => Math.max(0, prev - 1));
+    
+    const handleSubmit = (e) => {
+        e.preventDefault();
+        if (!isStepValid(step)) {
+             alert("Please ensure all required fields are filled correctly.");
+             return;
+        }
+        // Final validation (mock)
+        console.log("Final Form Data Submitted:", formData);
+        // TODO: Call actual Supabase insert/update function
+        onSubmit(formData); // Pass data to parent to add to list (mock)
+    };
+
+    // Common input field styling
+    const inputClasses = `w-full p-2.5 bg-gray-700 border border-gray-600 rounded-md outline-none text-gray-200 placeholder-gray-400 ${focusRingClasses} focus:border-transparent disabled:opacity-50`;
+    const labelClasses = "block text-sm font-medium text-gray-300 mb-1.5";
+
+    // Total steps including category selection
+    const totalSteps = 4; 
+
+    return (
+        <div className={`${glassPanelClasses} p-8`}>
+            <div className="flex justify-between items-center mb-6">
+                <h2 className="text-2xl font-semibold text-gray-100">
+                    {step === 0 ? "Select Property Category" : `Add New Property (Step ${step} of ${totalSteps-1})`} 
+                </h2>
+                <button onClick={onCancel} className={`inline-flex items-center gap-2 px-4 py-2 rounded-md bg-gray-700 text-gray-100 hover:bg-gray-600 transition-colors ${focusRingClasses}`}>
+                    Cancel
+                </button>
+            </div>
+
+            {/* Progress Bar - Adjusted for 0-based step */}
+            {step > 0 && (
+                <div className="w-full bg-gray-700 rounded-full h-2.5 mb-8">
+                    <div className="bg-[#0057e7] h-2.5 rounded-full transition-all duration-300" style={{ width: `${(step / (totalSteps -1)) * 100}%` }}></div>
+                </div>
+            )}
+
+            <form onSubmit={handleSubmit} className="space-y-6">
+                {/* Step 0: Category Selection */}
+                {step === 0 && (
+                    <section>
+                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4">
+                            {Object.entries(categories).map(([key, { label, icon: Icon }]) => (
+                                <button
+                                    type="button"
+                                    key={key}
+                                    onClick={() => handleCategorySelect(key)}
+                                    className={`p-4 border rounded-lg flex flex-col items-center justify-center aspect-square transition-all duration-200 ${focusRingClasses} ${formData.category === key ? 'border-[#00e5ff] bg-[#0057e7]/20 ring-2 ring-[#00e5ff]' : 'border-gray-600 hover:border-gray-500 hover:bg-gray-700/50'}`}
+                                >
+                                    <Icon size={32} className={`mb-2 ${formData.category === key ? 'text-[#00e5ff]' : 'text-gray-400'}`} />
+                                    <span className={`text-sm font-medium ${formData.category === key ? 'text-white' : 'text-gray-300'}`}>{label}</span>
+                                    {formData.category === key && <Check size={16} className="absolute top-2 right-2 text-[#00e5ff]" />}
+                                </button>
+                            ))}
+                        </div>
+                    </section>
+                )}
+
+                {/* Step 1: Basics */}
+                {step === 1 && formData.category && (
+                    <section>
+                        <h3 className="text-xl font-semibold text-gray-200 mb-4">Property Basics</h3>
+                        <div> <label htmlFor="nickname" className={labelClasses}>Property Name / Nickname <span className="text-red-500">*</span></label> <input type="text" name="nickname" id="nickname" value={formData.nickname} onChange={handleChange} className={inputClasses} placeholder="e.g., My Sunnyvale Home" required /> </div>
+                        <div>
+                            <label htmlFor="categoryDisplay" className={labelClasses}>Category</label>
+                            <input type="text" name="categoryDisplay" id="categoryDisplay" value={categories[formData.category]?.label || ''} className={inputClasses} disabled />
+                        </div>
+                         {categories[formData.category]?.subTypes && (
+                             <div>
+                                <label htmlFor="subType" className={labelClasses}>{categories[formData.category].label} Type <span className="text-red-500">*</span></label>
+                                <select name="subType" id="subType" value={formData.subType} onChange={handleChange} className={inputClasses} required>
+                                    <option value="" disabled>Select a subtype...</option>
+                                    {categories[formData.category].subTypes.map(sub => <option key={sub} value={sub}>{sub}</option>)}
+                                </select>
+                             </div>
+                         )}
+                        <div> <label htmlFor="purchasePrice" className={labelClasses}>Purchase Price (Optional)</label> <input type="number" name="purchasePrice" id="purchasePrice" value={formData.purchasePrice} onChange={handleChange} className={inputClasses} placeholder="e.g., 750000" min="0" /> </div>
+                        <div> <label htmlFor="purchaseDate" className={labelClasses}>Purchase Date (Optional)</label> <input type="date" name="purchaseDate" id="purchaseDate" value={formData.purchaseDate} onChange={handleChange} className={inputClasses} max={new Date().toISOString().split("T")[0]}/> </div>
+                        <div> <label htmlFor="description" className={labelClasses}>Description (Optional)</label> <textarea name="description" id="description" value={formData.description} onChange={handleChange} rows="3" className={inputClasses} placeholder="Brief description or notes..."></textarea> </div>
+                    </section>
+                )}
+
+                {/* Step 2: Category-Specific Details */}
+                {step === 2 && formData.category && (
+                    <section>
+                        <h3 className="text-xl font-semibold text-gray-200 mb-4">{categories[formData.category]?.label} Details</h3>
+                        
+                        {/* Real Estate Specific Fields */}
+                        {formData.category === 'real_estate' && (
+                            <>
+                                <div> <label htmlFor="address" className={labelClasses}>Full Address <span className="text-red-500">*</span></label> <input type="text" name="address" id="address" value={formData.address || ''} onChange={handleChange} className={inputClasses} placeholder="Search with Google Places Autocomplete..." required /> <p className="text-xs text-gray-500 mt-1">Google Places Autocomplete to be integrated here.</p> </div>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div> <label htmlFor="details.bedrooms" className={labelClasses}>Bedrooms</label> <input type="number" name="details.bedrooms" id="details.bedrooms" value={formData.details.bedrooms || ''} onChange={handleChange} className={inputClasses} min="0" /> </div>
+                                    <div> <label htmlFor="details.bathrooms" className={labelClasses}>Bathrooms</label> <input type="number" name="details.bathrooms" id="details.bathrooms" step="0.5" value={formData.details.bathrooms || ''} onChange={handleChange} className={inputClasses} min="0"/> </div>
+                                    <div> <label htmlFor="details.sqft" className={labelClasses}>Square Footage</label> <input type="number" name="details.sqft" id="details.sqft" value={formData.details.sqft || ''} onChange={handleChange} className={inputClasses} min="0"/> </div>
+                                    <div> <label htmlFor="details.lot_size" className={labelClasses}>Lot Size (Acres)</label> <input type="number" name="details.lot_size" id="details.lot_size" step="0.01" value={formData.details.lot_size || ''} onChange={handleChange} className={inputClasses} min="0"/> </div>
+                                    <div> <label htmlFor="details.year_built" className={labelClasses}>Year Built</label> <input type="number" name="details.year_built" id="details.year_built" value={formData.details.year_built || ''} onChange={handleChange} className={inputClasses} placeholder="YYYY" min="1800" max={new Date().getFullYear()} /> </div>
+                                </div>
+                            </>
+                        )}
+
+                        {/* Vehicle Specific Fields */}
+                        {formData.category === 'vehicle' && (
+                            <>
+                                <div> <label htmlFor="details.garaging_address" className={labelClasses}>Garaging Address (if different)</label> <input type="text" name="details.garaging_address" id="details.garaging_address" value={formData.details.garaging_address || ''} onChange={handleChange} className={inputClasses} placeholder="Leave blank if same as primary" /> </div>
+                                <div> <label htmlFor="details.make" className={labelClasses}>Make <span className="text-red-500">*</span></label> <input type="text" name="details.make" id="details.make" value={formData.details.make || ''} onChange={handleChange} className={inputClasses} required /> </div>
+                                <div> <label htmlFor="details.model" className={labelClasses}>Model <span className="text-red-500">*</span></label> <input type="text" name="details.model" id="details.model" value={formData.details.model || ''} onChange={handleChange} className={inputClasses} required /> </div>
+                                <div> <label htmlFor="details.year" className={labelClasses}>Year <span className="text-red-500">*</span></label> <input type="number" name="details.year" id="details.year" value={formData.details.year || ''} onChange={handleChange} className={inputClasses} placeholder="YYYY" required min="1900" max={new Date().getFullYear()+1}/> </div>
+                                <div> <label htmlFor="details.vin" className={labelClasses}>VIN <span className="text-red-500">*</span></label> <input type="text" name="details.vin" id="details.vin" value={formData.details.vin || ''} onChange={handleChange} className={inputClasses} required /> </div>
+                            </>
+                        )}
+                        
+                        {/* Placeholder for other categories */}
+                         {(formData.category === 'watercraft' || formData.category === 'rec_vehicle' || formData.category === 'valuables') && (
+                            <p className="text-gray-400 text-center py-4">Specific fields for {categories[formData.category]?.label} will appear here.</p>
+                         )}
+                    </section>
+                )}
+
+                {/* Step 3: Media & Documents */}
+                {step === 3 && formData.category && (
+                    <section>
+                        <h3 className="text-xl font-semibold text-gray-200 mb-4">Media & Documents</h3>
+                        <div>
+                            <label htmlFor="photos" className={labelClasses}>Upload Photos</label>
+                            <input type="file" name="photos" id="photos" multiple accept="image/*" onChange={(e) => handleFileChange(e, 'photos')} className={`w-full text-sm text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-[#0057e7] file:text-white hover:file:bg-[#004abc] ${focusRingClasses}`} />
+                            {formData.category === 'real_estate' && formData.address && (
+                                <div className="mt-2 flex items-center">
+                                    <input type="checkbox" name="useStreetViewPhoto" id="useStreetViewPhoto" checked={formData.useStreetViewPhoto} onChange={handleChange} className={`h-4 w-4 rounded border-gray-500 text-[#0057e7] focus:ring-[#00e5ff] ${focusRingClasses}`} />
+                                    <label htmlFor="useStreetViewPhoto" className="ml-2 block text-sm text-gray-300">Use Google Street View as hero photo (if available)</label>
+                                </div>
+                            )}
+                            {/* Display mock uploaded photos */}
+                            {formData.photos.length > 0 && <div className="mt-2 text-xs text-gray-400">Files selected: {formData.photos.map(f => f.name).join(', ')}</div>}
+                        </div>
+                        <div>
+                            <label htmlFor="documents" className={labelClasses}>Upload Documents (e.g., Purchase Agreement, Title, Appraisal)</label>
+                            <input type="file" name="documents" id="documents" multiple accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.heic" onChange={(e) => handleFileChange(e, 'documents')} className={`w-full text-sm text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-[#0057e7] file:text-white hover:file:bg-[#004abc] ${focusRingClasses}`} />
+                             {formData.documents.length > 0 && <div className="mt-2 text-xs text-gray-400">Files selected: {formData.documents.map(f => f.name).join(', ')}</div>}
+                        </div>
+                    </section>
+                )}
+
+                {/* Navigation Buttons */}
+                {step > 0 && ( // Don't show nav on category selection step
+                    <div className="flex justify-between items-center pt-6 border-t border-gray-700">
+                        <button type="button" onClick={onCancel} className={`px-6 py-2.5 rounded-md bg-gray-700 text-gray-100 hover:bg-gray-600 transition-colors ${focusRingClasses}`}> Cancel </button>
+                        <div>
+                            {step > 1 && ( <button type="button" onClick={prevStep} className={`px-6 py-2.5 rounded-md bg-gray-600 text-gray-200 hover:bg-gray-500 transition-colors mr-3 ${focusRingClasses}`}> <ChevronLeft size={18} className="inline mr-1" /> Previous </button> )}
+                            {step < (totalSteps - 1) && ( <button type="button" onClick={nextStep} disabled={!isStepValid(step)} className={`px-6 py-2.5 rounded-md text-white bg-gradient-to-r from-[#0057e7] to-[#00e5ff] transition transform-gpu hover:scale-[1.02] active:scale-95 disabled:opacity-50 ${focusRingClasses}`}> Next <ChevronRight size={18} className="inline ml-1" /> </button> )}
+                            {step === (totalSteps - 1) && ( <button type="submit" disabled={!isStepValid(step)} className={`px-6 py-2.5 rounded-md text-white bg-gradient-to-r from-[#10b981] to-[#00e5ff] transition transform-gpu hover:scale-[1.02] active:scale-95 disabled:opacity-50 ${focusRingClasses}`}> <FilePlus size={18} className="inline mr-1" /> Add Property </button> )}
+                        </div>
+                    </div>
+                )}
+            </form>
+        </div>
+    );
+};
+
 
 export default App;
