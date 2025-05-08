@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { 
-    UploadCloud, MessageSquare, FileText, LayoutDashboard, Home, Settings, HelpCircle, LogOut, 
-    Search, Bell, UserCircle, Zap, BarChart2, ShieldCheck, Menu, X, MapPin, Building, Car, PlusCircle, 
+import {
+    UploadCloud, MessageSquare, FileText, LayoutDashboard, Home, Settings, HelpCircle, LogOut,
+    Search, Bell, UserCircle, Zap, BarChart2, ShieldCheck, Menu, X, MapPin, Building, Car, PlusCircle,
     List, Filter, DollarSign, FilePlus, Users, ShieldAlert, TrendingUp, ChevronLeft, ChevronRight, Image, Info, Map, FileDigit, Eye,
     CheckCircle, XCircle, HelpCircle as HelpCircleIcon, // Renamed to avoid conflict
     TrendingDown, // For "gaps"
@@ -15,7 +15,6 @@ import {
     Award, // For "Guaranteed Maximum Coverage"
     Paperclip, // For "One-Click Claim Documentation"
     Activity, // For "Real-Time Claim Progress"
-    /* Twitter icon removed */ /* Linkedin, Facebook removed */ // For Footer. X icon is already imported.
     Rocket, // For new section
     Target, // For new section
     Sparkles, // For new section
@@ -28,59 +27,69 @@ import {
     Sailboat, // For Watercraft
     Bike, // For Rec Vehicle (Placeholder)
     Gem, // For Valuables
-    Check // For selected category
+    Check, // For selected category
+    Download, // For Export icon
+    ExternalLink, // For "View Details" on PolicyCard
+    Archive // For "Archive" on PolicyCard
 } from 'lucide-react';
 
 // Mock Supabase client (replace with actual Supabase client in a real project)
 const supabase = {
   storage: {
-    from: () => ({
+    from: (bucketName) => ({ // Added bucketName for clarity
       upload: async (filePath, file) => {
-        console.log(`Mock uploading ${file.name} to ${filePath}`);
+        console.log(`Mock uploading ${file.name} to ${bucketName}/${filePath}`);
         await new Promise(resolve => setTimeout(resolve, 1500)); // Simulate upload delay
-        return { data: { path: filePath }, error: null };
+        // In a real scenario, this would return a public URL or a path to construct one.
+        return { data: { path: `mock_storage_path/${bucketName}/${filePath}` }, error: null };
       },
     }),
   },
-  from: (table) => ({ // Added table argument for better mocking
-    insert: async (data) => {
-      console.log(`Mock inserting data to ${table}:`, data);
+  from: (table) => ({
+    insert: async (records) => { // Changed 'data' to 'records' for clarity with array
+      console.log(`Mock inserting data to ${table}:`, records);
       await new Promise(resolve => setTimeout(resolve, 500));
       // Simulate returning the inserted data with an ID
-      return { data: [{...data, id: `mock_${table}_${Date.now()}`}], error: null }; 
+      const newRecords = records.map(record => ({...record, id: `mock_${table}_${Date.now()}_${Math.random().toString(36).substring(7)}` }));
+      return { data: newRecords, error: null };
     },
     select: async (fields = '*') => {
       console.log(`Mock selecting ${fields} from ${table}`);
       await new Promise(resolve => setTimeout(resolve, 500));
-      if (table === 'policy_data' || table === 'uploaded_documents') { 
-        // Mock data for policies and documents that can be selected in chat
-        return { 
+      if (table === 'policy_data' || table === 'uploaded_documents') {
+        return {
             data: [
-                { id: 'pol_123', name: 'Homeowners Policy HO-123', type: 'policy', processed_text: 'This is the full text for Homeowners Policy HO-123. It covers dwelling, personal property, and liability. The deductible is $1000. Coverage for flood is excluded unless endorsed.' },
-                { id: 'doc_abc', name: 'Auto Policy - MyCar.pdf', type: 'document', processed_text: 'This document is MyCar.pdf. It details comprehensive and collision coverage for a 2021 Toyota Camry. The policy number is AUT-XYZ-789.' },
-                { id: 'pol_456', name: 'Umbrella Policy UB-456', type: 'policy', processed_text: 'Umbrella Policy UB-456 provides an additional $1,000,000 in liability coverage over underlying home and auto policies.' },
-            ], 
-            error: null 
+                { id: 'pol_123', name: 'Homeowners Policy HO-123', type: 'policy', policy_number: 'HO-123', carrier: 'State Farm', property_name: 'Sunnyvale Home', premium: 1200, renewal_date: '2025-08-15', status: 'Active', coverage_types: ['Homeowners/Casualty', 'Flood'], processed_text: 'This is the full text for Homeowners Policy HO-123. It covers dwelling, personal property, and liability. The deductible is $1000. Coverage for flood is excluded unless endorsed.', document_url: 'mock_path/ho123.pdf', category_key: 'real_estate' },
+                { id: 'doc_abc', name: 'Auto Policy - MyCar.pdf', type: 'policy', policy_number: 'AUT-XYZ-789', carrier: 'Geico', property_name: 'Reliable Sedan', premium: 800, renewal_date: '2025-06-01', status: 'Active', coverage_types: ['Auto Liability', 'Collision/Comprehensive'], processed_text: 'This document is MyCar.pdf. It details comprehensive and collision coverage for a 2021 Toyota Camry. The policy number is AUT-XYZ-789.', document_url: 'mock_path/mycar.pdf', category_key: 'vehicle' },
+                { id: 'pol_456', name: 'Umbrella Policy UB-456', type: 'policy', policy_number: 'UB-456', carrier: 'Chubb', property_name: 'General Coverage', premium: 500, renewal_date: '2026-01-20', status: 'Active', coverage_types: ['Umbrella'], processed_text: 'Umbrella Policy UB-456 provides an additional $1,000,000 in liability coverage over underlying home and auto policies.', document_url: 'mock_path/ub456.pdf', category_key: 'valuables' }, // Assuming umbrella can be linked to valuables or general
+                { id: 'pol_789', name: 'Boat Policy BT-001', type: 'policy', policy_number: 'BT-001', carrier: 'Progressive', property_name: 'Speedy Boat', premium: 650, renewal_date: '2025-03-10', status: 'Lapsed', coverage_types: ['Hull', 'Liability'], processed_text: 'Policy for Speedy Boat, covering hull damage and liability up to $300,000.', document_url: 'mock_path/bt001.pdf', category_key: 'watercraft' },
+            ],
+            error: null
         };
       }
       if (table === 'properties') {
-        return { 
+        return {
             data: [
-              { id: 'prop1', name: 'Sunnyvale Home', address: '123 Main St, Sunnyvale, CA', type: 'Real Estate - Primary', created_at: '2024-01-15T10:00:00Z', value: 750000, image_url: 'https://placehold.co/600x400/1f2937/4a5568?text=Property+1', bedrooms: 3, bathrooms: 2, sqft: 1800, lot_size: 0.2, year_built: 1995, latitude: 37.3688, longitude: -122.0363 },
-              { id: 'prop2', name: 'Downtown Condo', address: '456 Market Ave, Metropolis, NY', type: 'Real Estate - Investment', created_at: '2023-11-20T14:30:00Z', value: 520000, image_url: 'https://placehold.co/600x400/1f2937/4a5568?text=Property+2', bedrooms: 2, bathrooms: 1, sqft: 950, year_built: 2010, latitude: 40.7128, longitude: -74.0060 },
-              { id: 'prop3', name: 'Reliable Sedan', address: 'N/A (Vehicle)', type: 'Vehicle', created_at: '2024-03-01T09:15:00Z', value: 22000, image_url: 'https://placehold.co/600x400/1f2937/4a5568?text=Vehicle+1', make: 'Toyota', model: 'Camry', year: 2021, vin: 'ABC123XYZ789' },
-            ], 
-            error: null 
+              { id: 'prop1', name: 'Sunnyvale Home', address: '123 Main St, Sunnyvale, CA', category_key: 'real_estate', type: 'Real Estate - Primary Residence', created_at: '2024-01-15T10:00:00Z', value: 750000, image_url: 'https://placehold.co/600x400/1f2937/4a5568?text=Property+1', bedrooms: 3, bathrooms: 2, sqft: 1800, lot_size: 0.2, year_built: 1995, county: 'Santa Clara', description: 'Beautiful family home in a quiet neighborhood.', latitude: 37.3688, longitude: -122.0363 },
+              { id: 'prop2', name: 'Downtown Condo', address: '456 Market Ave, Metropolis, NY', category_key: 'real_estate', type: 'Real Estate - Investment Property', created_at: '2023-11-20T14:30:00Z', value: 520000, image_url: 'https://placehold.co/600x400/1f2937/4a5568?text=Property+2', bedrooms: 2, bathrooms: 1, sqft: 950, year_built: 2010, county: 'Metropolis County', description: 'Modern condo with city views.', latitude: 40.7128, longitude: -74.0060 },
+              { id: 'prop3', name: 'Reliable Sedan', address: 'N/A (Vehicle)', category_key: 'vehicle', type: 'Vehicle - Sedan', created_at: '2024-03-01T09:15:00Z', value: 22000, image_url: 'https://placehold.co/600x400/1f2937/4a5568?text=Vehicle+1', make: 'Toyota', model: 'Camry', year: 2021, vin: 'ABC123XYZ789', county: null, description: 'Daily driver, low mileage.' },
+              { id: 'prop4', name: 'Speedy Boat', address: 'N/A (Watercraft)', category_key: 'watercraft', type: 'Watercraft - Boat', created_at: '2023-05-10T11:00:00Z', value: 45000, image_url: 'https://placehold.co/600x400/1f2937/4a5568?text=Speedy+Boat', make: 'Sea Ray', model: 'SPX 190', year: 2020, hull_id: 'SR123BOAT456HIN', county: null, description: 'Fast and fun boat for weekend trips.' },
+            ],
+            error: null
         };
       }
-      return { data: [], error: null }; // Default empty
+      if (table === 'property_insurance_policies') {
+        console.log("Mock selecting from property_insurance_policies");
+        return { data: [], error: null };
+      }
+      return { data: [], error: null };
     }
   }),
 };
 
 // Helper function to simulate NLP processing
 const mockNlpProcess = async (query, policyText) => {
-  await new Promise(resolve => setTimeout(resolve, 1000)); 
+  await new Promise(resolve => setTimeout(resolve, 1000));
   const lastWord = query.toLowerCase().split(" ").filter(Boolean).pop();
   if (policyText && lastWord && policyText.toLowerCase().includes(lastWord)) {
     return `Regarding "${query}" in the selected context: [AI would provide a detailed answer based on the policy/document text here. For example, if you asked about "deductible", and the text mentions it, that info would be summarized.]`;
@@ -98,34 +107,34 @@ const Navbar = ({ navigateToDashboard }) => {
   const focusRingClasses = "focus-visible:ring-2 focus-visible:ring-[#00e5ff]";
 
   const handleSignIn = () => {
-    navigateToDashboard(); // Navigate to dashboard on Sign In
-    setIsMobileMenuOpen(false); // Close mobile menu if open
+    navigateToDashboard();
+    setIsMobileMenuOpen(false);
   };
-  
-  return ( 
-    <nav className="bg-[#1f2937] bg-opacity-40 backdrop-blur-xs shadow-[0_4px_30px_rgba(0,0,0,0.1)] border border-white/5 text-white p-4 fixed w-full top-0 z-50"> 
-      <div className="container mx-auto flex justify-between items-center"> 
-        <div className="flex items-center space-x-2 cursor-pointer" onClick={() => window.location.reload()} > 
-          <ShieldCheck className="h-8 w-8 text-[#0057e7]" /> 
-          <span className="text-2xl font-bold">ClaimGuardian</span> 
-        </div> 
-        <div className="hidden md:flex space-x-6 items-center"> 
-          {navLinks.map((link) => ( <a key={link.name} href={link.href} className={`text-gray-300 hover:text-[#00e5ff] transition-colors ${focusRingClasses}`}> {link.name} </a> ))} 
-          <button onClick={handleSignIn} className={`inline-flex items-center justify-center gap-2 px-4 py-2 rounded-md text-white bg-gradient-to-r from-[#0057e7] to-[#00e5ff] transition transform-gpu hover:scale-[1.02] active:scale-95 ${focusRingClasses}`} > Sign In </button> 
-        </div> 
-        <div className="md:hidden"> 
-          <button onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} aria-label="Toggle menu" className={focusRingClasses}> 
-            {isMobileMenuOpen ? <X size={28} /> : <Menu size={28} />} 
-          </button> 
-        </div> 
-      </div> 
-      {isMobileMenuOpen && ( 
-        <div className="md:hidden mt-4 space-y-4 p-4 bg-[#1f2937] bg-opacity-60 backdrop-blur-sm rounded-lg border border-white/10"> 
-          {navLinks.map((link) => ( <a key={link.name} href={link.href} className={`block py-2 text-gray-300 hover:text-[#00e5ff] transition-colors ${focusRingClasses}`}> {link.name} </a> ))} 
-          <button onClick={handleSignIn} className={`w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-md text-white bg-gradient-to-r from-[#0057e7] to-[#00e5ff] transition transform-gpu hover:scale-[1.02] active:scale-95 text-center ${focusRingClasses}`} > Sign In </button> 
-        </div> 
-      )} 
-    </nav> 
+
+  return (
+    <nav className="bg-[#1f2937] bg-opacity-40 backdrop-blur-xs shadow-[0_4px_30px_rgba(0,0,0,0.1)] border border-white/5 text-white p-4 fixed w-full top-0 z-50">
+      <div className="container mx-auto flex justify-between items-center">
+        <div className="flex items-center space-x-2 cursor-pointer" onClick={() => window.location.reload()} >
+          <ShieldCheck className="h-8 w-8 text-[#0057e7]" />
+          <span className="text-2xl font-bold">ClaimGuardian</span>
+        </div>
+        <div className="hidden md:flex space-x-6 items-center">
+          {navLinks.map((link) => ( <a key={link.name} href={link.href} className={`text-gray-300 hover:text-[#00e5ff] transition-colors ${focusRingClasses}`}> {link.name} </a> ))}
+          <button onClick={handleSignIn} className={`inline-flex items-center justify-center gap-2 px-4 py-2 rounded-md text-white bg-gradient-to-r from-[#0057e7] to-[#00e5ff] transition transform-gpu hover:scale-[1.02] active:scale-95 ${focusRingClasses}`} > Sign In </button>
+        </div>
+        <div className="md:hidden">
+          <button onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} aria-label="Toggle menu" className={focusRingClasses}>
+            {isMobileMenuOpen ? <X size={28} /> : <Menu size={28} />}
+          </button>
+        </div>
+      </div>
+      {isMobileMenuOpen && (
+        <div className="md:hidden mt-4 space-y-4 p-4 bg-[#1f2937] bg-opacity-60 backdrop-blur-sm rounded-lg border border-white/10">
+          {navLinks.map((link) => ( <a key={link.name} href={link.href} className={`block py-2 text-gray-300 hover:text-[#00e5ff] transition-colors ${focusRingClasses}`}> {link.name} </a> ))}
+          <button onClick={handleSignIn} className={`w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-md text-white bg-gradient-to-r from-[#0057e7] to-[#00e5ff] transition transform-gpu hover:scale-[1.02] active:scale-95 text-center ${focusRingClasses}`} > Sign In </button>
+        </div>
+      )}
+    </nav>
   );
 };
 
@@ -134,29 +143,29 @@ const App = () => {
   const [currentPage, setCurrentPage] = useState('home');
   const [activeTab, setActiveTab] = useState('dashboardHome');
 
-  const navigate = (page) => { 
-    setCurrentPage(page); 
-    if (page === 'dashboard') { 
-      setActiveTab('dashboardHome'); 
-    } 
+  const navigate = (page) => {
+    setCurrentPage(page);
+    if (page === 'dashboard') {
+      setActiveTab('dashboardHome');
+    }
   };
   const switchTab = (tab) => { setActiveTab(tab); };
 
-  useEffect(() => { 
-    document.documentElement.classList.add('dark'); 
-    return () => { 
-      document.documentElement.classList.remove('dark'); 
-    }; 
+  useEffect(() => {
+    document.documentElement.classList.add('dark');
+    return () => {
+      document.documentElement.classList.remove('dark');
+    };
   }, []);
 
-  return ( 
-    <div className="min-h-screen bg-gray-900 text-gray-100 font-sans leading-relaxed selection:bg-[#0057e7]/80 selection:text-white"> 
-      {currentPage === 'home' && <Navbar navigateToDashboard={() => navigate('dashboard')} />} 
-      <div className={currentPage === 'home' ? 'pt-16' : ''}> 
-        {currentPage === 'home' && <HomePage navigateToDashboard={() => navigate('dashboard')} />} 
-        {currentPage === 'dashboard' && <DashboardPage activeTab={activeTab} switchTab={switchTab} navigateHome={() => navigate('home')} />} 
-      </div> 
-    </div> 
+  return (
+    <div className="min-h-screen bg-gray-900 text-gray-100 font-sans leading-relaxed selection:bg-[#0057e7]/80 selection:text-white">
+      {currentPage === 'home' && <Navbar navigateToDashboard={() => navigate('dashboard')} />}
+      <div className={currentPage === 'home' ? 'pt-16' : ''}>
+        {currentPage === 'home' && <HomePage navigateToDashboard={() => navigate('dashboard')} />}
+        {currentPage === 'dashboard' && <DashboardPage activeTab={activeTab} switchTab={switchTab} navigateHome={() => navigate('home')} />}
+      </div>
+    </div>
   );
 };
 
@@ -167,7 +176,7 @@ const HomePage = ({ navigateToDashboard }) => {
 
   const howItWorksSteps = [ { icon: <FileSearch size={32} className="text-[#00e5ff]" />, title: "Policy Insight", description: "Upload policies, get insights on risks, gaps, and savings." }, { icon: <Edit3 size={32} className="text-[#00e5ff]" />, title: "Document Your Loss", description: "Easily upload photos, values, costs, and describe your damage or loss." }, { icon: <Cpu size={32} className="text-[#00e5ff]" />, title: "AI-Enhanced Claims Processing", description: "AI generated accurate, insurance-ready claim support documents automatically." }, { icon: <Briefcase size={32} className="text-[#00e5ff]" />, title: "Track, Settle, and Recover", description: "Track claims, payouts, and connect with resources/licensed contractors." }, ];
   const whyStandsOutFeatures = [ { icon: <ClipboardList size={28} className="text-[#0057e7]" />, title: "Actionable Policy Insights", description: "Instantly see exactly what's covered—and what's not—in clear, simple language." }, { icon: <AlertTriangle size={28} className="text-[#0057e7]" />, title: "Proactive Claims Alerts", description: "Receive timely reminders for critical deadlines, documentation requests, and required actions, keeping your claim on track." }, { icon: <Settings2 size={28} className="text-[#0057e7]" />, title: "Intelligent Claims Processing", description: "AI accelerates claim validation, reduces friction, detects potential fraud, and ensures rapid payouts." }, { icon: <Award size={28} className="text-[#0057e7]" />, title: "Guaranteed Maximum Coverage", description: "Automatically matches losses to your policy, ensuring every eligible dollar is identified and documented—leaving no money unclaimed." }, { icon: <Paperclip size={28} className="text-[#0057e7]" />, title: "One-Click Claim Documentation", description: "Simplify claim preparation—upload documents/photos, and ClaimGuardian instantly compiles organized, insurer-ready claim documentation." }, { icon: <Activity size={28} className="text-[#0057e7]" />, title: "Real-Time Claim Progress", description: "Follow your claim's status, payments, and timelines effortlessly, directly from any device." }, ];
-  
+
   const visionFeatures = [
     { icon: <Rocket size={28} className="text-[#0057e7]" />, title: "Disrupting the Status Quo", description: "We believe managing insurance and navigating claims shouldn't be a fight. ClaimGuardian is built to level the playing field." },
     { icon: <Target size={28} className="text-[#0057e7]" />, title: "Empowering Policyholders", description: "Our AI-driven insights and streamlined processes put you back in control, ensuring clarity and maximizing your rightful recovery." },
@@ -175,22 +184,20 @@ const HomePage = ({ navigateToDashboard }) => {
   ];
 
   const handleSignIn = () => {
-      navigateToDashboard(); 
+      navigateToDashboard();
   };
 
-  return ( 
+  return (
     <div className="flex flex-col items-center justify-center min-h-[calc(100vh-4rem)] pt-12 pb-16 px-4 md:px-8 text-center overflow-x-hidden">
-      {/* Hero Section */}
       <section className="relative z-10 max-w-4xl mb-20 md:mb-32 pt-10 md:pt-16">
         <h1 className="text-5xl md:text-7xl font-bold mb-6 text-[#0057e7] tracking-tight"> ClaimGuardian </h1>
         <p className="text-xl md:text-2xl text-gray-300 mb-10 leading-relaxed max-w-2xl mx-auto"> Insurance companies push back. ClaimGuardian pushes harder—so you don't have to. </p>
-        <div className="flex flex-col sm:flex-row justify-center items-center space-y-4 sm:space-y-0 sm:space-x-6"> 
-          <button onClick={handleSignIn} className={`w-full sm:w-auto inline-flex items-center justify-center gap-2 px-8 py-3.5 rounded-lg text-white bg-gradient-to-r from-[#0057e7] to-[#00e5ff] transition transform-gpu hover:scale-[1.03] active:scale-95 text-lg font-semibold ${focusRingClasses}`} > Get Started </button> 
-          <button onClick={handleSignIn} className={`w-full sm:w-auto px-8 py-3.5 rounded-lg bg-gray-700 text-gray-100 hover:bg-gray-600 transition-colors text-lg font-semibold border border-gray-600 ${focusRingClasses}`} > Sign In </button> 
+        <div className="flex flex-col sm:flex-row justify-center items-center space-y-4 sm:space-y-0 sm:space-x-6">
+          <button onClick={handleSignIn} className={`w-full sm:w-auto inline-flex items-center justify-center gap-2 px-8 py-3.5 rounded-lg text-white bg-gradient-to-r from-[#0057e7] to-[#00e5ff] transition transform-gpu hover:scale-[1.03] active:scale-95 text-lg font-semibold ${focusRingClasses}`} > Get Started </button>
+          <button onClick={handleSignIn} className={`w-full sm:w-auto px-8 py-3.5 rounded-lg bg-gray-700 text-gray-100 hover:bg-gray-600 transition-colors text-lg font-semibold border border-gray-600 ${focusRingClasses}`} > Sign In </button>
         </div>
       </section>
 
-      {/* How ClaimGuardian Works Section */}
       <section className="w-full max-w-6xl mb-20 md:mb-32 px-4">
         <h2 className="text-3xl md:text-4xl font-bold text-gray-100 mb-3 text-center">How ClaimGuardian Works</h2>
         <p className="text-lg text-gray-400 mb-12 md:mb-16 text-center">Clear coverage, confident claims, complete recovery.</p>
@@ -199,21 +206,18 @@ const HomePage = ({ navigateToDashboard }) => {
         </div>
       </section>
 
-      {/* Why ClaimGuardian Stands Out Section */}
       <section className="w-full max-w-6xl mb-20 md:mb-32 px-4">
         <h2 className="text-3xl md:text-4xl font-bold text-gray-100 mb-12 md:mb-16 text-center">Why ClaimGuardian Stands Out</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
           {whyStandsOutFeatures.map((feature, index) => ( <div key={index} className={`${glassCardClasses} text-left`}> <div className="flex items-center mb-4"> <div className="p-2 bg-[#1f2937] rounded-md mr-3 shadow-inner">{feature.icon}</div> <h3 className="text-lg font-semibold text-gray-100">{feature.title}</h3> </div> <p className="text-sm leading-relaxed text-gray-300">{feature.description}</p> </div> ))}
         </div>
       </section>
-      
-      {/* Why ClaimGuardian? Text Block */}
+
       <section className="w-full max-w-3xl mb-20 md:mb-32 px-4 text-center">
          <h2 className="text-3xl md:text-4xl font-bold text-gray-100 mb-6">Why ClaimGuardian?</h2>
          <p className="text-lg text-gray-300 leading-relaxed"> Because insurance is complicated, claims are overwhelming, and recovery is stressful. ClaimGuardian simplifies your coverage, expertly manages claims, and connects you to resources—ensuring you're protected, supported, and made whole. </p>
       </section>
 
-      {/* Vision Section (Formerly Testimonials) */}
       <section className="w-full max-w-5xl mb-20 md:mb-32 px-4">
         <h2 className="text-3xl md:text-4xl font-bold text-gray-100 mb-4 text-center">Get Ready for the Change</h2>
         <p className="text-gray-400 mb-12 md:mb-16 text-center max-w-2xl mx-auto leading-relaxed">
@@ -222,9 +226,9 @@ const HomePage = ({ navigateToDashboard }) => {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-8">
           {visionFeatures.map((feature, index) => (
             <div key={index} className={`${glassCardClasses} flex flex-col text-center`}>
-               <div className="flex justify-center mb-4">
-                 <div className="p-3 bg-[#1f2937] rounded-full shadow-inner">{feature.icon}</div>
-               </div>
+                <div className="flex justify-center mb-4">
+                  <div className="p-3 bg-[#1f2937] rounded-full shadow-inner">{feature.icon}</div>
+                </div>
               <h3 className="text-lg font-semibold text-gray-100 mb-3">{feature.title}</h3>
               <p className="text-sm leading-relaxed text-gray-300">{feature.description}</p>
             </div>
@@ -232,14 +236,12 @@ const HomePage = ({ navigateToDashboard }) => {
         </div>
       </section>
 
-      {/* CTA Section */}
       <section className="w-full max-w-4xl mb-20 md:mb-32 px-4 text-center py-12 md:py-16 bg-[#1f2937] bg-opacity-30 rounded-xl border border-white/5 shadow-xl">
         <h2 className="text-3xl md:text-4xl font-bold text-gray-100 mb-4">Ready for Complete Insurance Confidence?</h2>
         <p className="text-lg text-gray-300 mb-8 max-w-2xl mx-auto leading-relaxed"> Discover why people trust ClaimGuardian to simplify policies, streamline claims, and secure full recovery. </p>
-        <button onClick={handleSignIn} className={`inline-flex items-center justify-center gap-2 px-10 py-4 rounded-lg text-white bg-gradient-to-r from-[#0057e7] to-[#00e5ff] transition transform-gpu hover:scale-[1.03] active:scale-95 text-lg font-semibold ${focusRingClasses}`} > Get Started Now </button> 
+        <button onClick={handleSignIn} className={`inline-flex items-center justify-center gap-2 px-10 py-4 rounded-lg text-white bg-gradient-to-r from-[#0057e7] to-[#00e5ff] transition transform-gpu hover:scale-[1.03] active:scale-95 text-lg font-semibold ${focusRingClasses}`} > Get Started Now </button>
       </section>
 
-      {/* Footer */}
       <footer className="w-full border-t border-gray-700 pt-12 pb-8">
         <div className="container mx-auto px-6 md:px-8">
             <div className="grid grid-cols-1 md:grid-cols-4 gap-8 mb-8">
@@ -247,15 +249,15 @@ const HomePage = ({ navigateToDashboard }) => {
                 <div> <h5 className="text-md font-semibold text-gray-200 mb-3">Product</h5> <ul className="space-y-2"> <li><a href="#" className={`text-sm text-gray-400 hover:text-[#00e5ff] transition-colors ${focusRingClasses}`}>Features</a></li> <li><a href="#" className={`text-sm text-gray-400 hover:text-[#00e5ff] transition-colors ${focusRingClasses}`}>Pricing</a></li> <li><a href="#" className={`text-sm text-gray-400 hover:text-[#00e5ff] transition-colors ${focusRingClasses}`}>Integrations (Soon)</a></li> </ul> </div>
                 <div> <h5 className="text-md font-semibold text-gray-200 mb-3">Company</h5> <ul className="space-y-2"> <li><a href="#" className={`text-sm text-gray-400 hover:text-[#00e5ff] transition-colors ${focusRingClasses}`}>About</a></li> <li><a href="#" className={`text-sm text-gray-400 hover:text-[#00e5ff] transition-colors ${focusRingClasses}`}>Privacy Policy</a></li> <li><a href="#" className={`text-sm text-gray-400 hover:text-[#00e5ff] transition-colors ${focusRingClasses}`}>Terms of Service</a></li> </ul> </div>
             </div>
-            <div className="border-t border-gray-700 pt-8 flex flex-col sm:flex-row justify-between items-center"> 
-              <p className="text-xs text-gray-500">&copy; {new Date().getFullYear()} ClaimGuardian. All rights reserved.</p> 
-              <div className="flex space-x-4 mt-4 sm:mt-0"> 
-                <a href="#" aria-label="X (formerly Twitter)" className={`text-gray-500 hover:text-[#00e5ff] ${focusRingClasses}`}><X size={18}/></a> 
-              </div> 
+            <div className="border-t border-gray-700 pt-8 flex flex-col sm:flex-row justify-between items-center">
+              <p className="text-xs text-gray-500">&copy; {new Date().getFullYear()} ClaimGuardian. All rights reserved.</p>
+              <div className="flex space-x-4 mt-4 sm:mt-0">
+                <a href="#" aria-label="X (formerly Twitter)" className={`text-gray-500 hover:text-[#00e5ff] ${focusRingClasses}`}><X size={18}/></a>
+              </div>
             </div>
         </div>
       </footer>
-    </div> 
+    </div>
   );
 };
 
@@ -264,71 +266,74 @@ const DashboardPage = ({ activeTab, switchTab, navigateHome }) => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const focusRingClasses = "focus-visible:ring-2 focus-visible:ring-[#00e5ff]";
   const glassPanelClasses = "backdrop-blur-xs shadow-[0_4px_30px_rgba(0,0,0,0.1)] rounded-lg bg-[#1f2937] bg-opacity-40 border border-white/5";
-  
-  return ( 
-    <div className="flex h-screen"> 
-      <aside className={`fixed inset-y-0 left-0 z-20 flex flex-col bg-[#1f2937] shadow-lg transition-transform duration-300 ease-in-out transform ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} md:relative md:translate-x-0 md:w-64 border-r border-gray-700`}> 
-        <div className="flex items-center justify-between p-4 h-16 border-b border-gray-700 md:hidden"> 
-          <div className="flex items-center cursor-pointer" onClick={navigateHome} title="Go to Home Page"> 
-            <ShieldCheck className="h-7 w-7 text-[#0057e7]" /> 
-            <h1 className="text-xl font-semibold text-gray-100 ml-2">ClaimGuardian</h1> 
-          </div> 
-          <button onClick={() => setSidebarOpen(false)} className={`md:hidden text-gray-400 hover:text-white ${focusRingClasses}`}> 
-            <X size={24} /> 
-          </button> 
-        </div> 
-        <div className="hidden md:flex items-center p-4 h-16 border-b border-gray-700"> 
-          <LayoutDashboard className="h-6 w-6 text-[#0057e7] mr-2" /> 
-          <h2 className="text-lg font-semibold text-gray-100">Dashboard Menu</h2> 
-        </div> 
-        <nav className="flex-1 p-4 space-y-2 overflow-y-auto"> 
-          <DashboardTab icon={<LayoutDashboard size={20} />} label="Dashboard Home" isActive={activeTab === 'dashboardHome'} onClick={() => switchTab('dashboardHome')} /> 
-          <DashboardTab icon={<Building size={20} />} label="Properties" isActive={activeTab === 'properties'} onClick={() => switchTab('properties')} /> 
-          <DashboardTab icon={<UploadCloud size={20} />} label="Upload Policy" isActive={activeTab === 'uploadPolicy'} onClick={() => switchTab('uploadPolicy')} /> 
-          <DashboardTab icon={<MessageSquare size={20} />} label="Review Policy (Chat)" isActive={activeTab === 'reviewPolicy'} onClick={() => switchTab('reviewPolicy')} /> 
-          
-          <p className="px-3 pt-4 pb-2 text-xs font-medium text-gray-500 uppercase">Future Features</p> 
-          <DashboardTab icon={<Search size={20} />} label="Claim Tracking" isDisabled={true} /> 
-          <DashboardTab icon={<FileText size={20} />} label="Policy Comparison" isDisabled={true} /> 
-          <DashboardTab icon={<HeartHandshake size={20} />} label="Recovery" isDisabled={true} /> 
-          <DashboardTab icon={<Library size={20} />} label="Resources" isDisabled={true} /> 
-          <DashboardTab icon={<PieChart size={20} />} label="Analytics" isDisabled={true} /> 
-          <DashboardTab icon={<Package size={20} />} label="Asset & Inventory" isDisabled={true} /> 
-          <DashboardTab icon={<UsersRound size={20} />} label="Social" isDisabled={true} /> 
-        </nav> 
-        <div className="p-4 border-t border-gray-700 mt-auto"> 
-          <DashboardTab icon={<Settings size={20} />} label="Settings" isDisabled={true}/> 
-          <DashboardTab icon={<HelpCircle size={20} />} label="Help & Support" isDisabled={true}/> 
-          <DashboardTab icon={<LogOut size={20} />} label="Logout" onClick={navigateHome} /> 
-        </div> 
-      </aside> 
-      <main className="flex-1 flex flex-col overflow-y-auto"> 
-        <header className="sticky top-0 z-10 flex items-center justify-between h-16 px-6 bg-[#1f2937] bg-opacity-90 backdrop-blur-md border-b border-gray-700"> 
-          <button onClick={() => setSidebarOpen(true)} className={`md:hidden text-gray-300 hover:text-white ${focusRingClasses}`}> 
-            <Menu size={24} /> 
-          </button> 
-          <div className="text-xl font-semibold text-gray-100"> 
-            {activeTab === 'properties' && 'Property'} 
-            {activeTab === 'uploadPolicy' && 'Upload Your Insurance Policy'} 
-            {activeTab === 'reviewPolicy' && 'Review Policy with AI Chatbot'} 
-            {activeTab === 'dashboardHome' && 'Welcome to Your Dashboard'} 
-          </div> 
-          <div className="flex items-center space-x-4"> 
-            <button className={`text-gray-400 hover:text-white relative ${focusRingClasses}`} title="Notifications"> 
-              <Bell size={22} /> 
-              <span className="absolute top-0 right-0 block h-2 w-2 rounded-full bg-[#ef4444] ring-2 ring-[#1f2937]"></span> 
-            </button> 
-            <UserCircle size={28} className="text-gray-400" title="User Profile"/> 
-          </div> 
-        </header> 
-        <div className="p-6 md:p-10"> 
-          {activeTab === 'dashboardHome' && <DashboardHomeContent glassPanelClasses={glassPanelClasses} />} 
-          {activeTab === 'properties' && <PropertyTab glassPanelClasses={glassPanelClasses} focusRingClasses={focusRingClasses} />} 
-          {activeTab === 'uploadPolicy' && <UploadPolicyTab glassPanelClasses={glassPanelClasses} focusRingClasses={focusRingClasses}/>} 
-          {activeTab === 'reviewPolicy' && <ReviewPolicyChatbot glassPanelClasses={glassPanelClasses} focusRingClasses={focusRingClasses}/>} 
-        </div> 
-      </main> 
-    </div> 
+
+  return (
+    <div className="flex h-screen">
+      <aside className={`fixed inset-y-0 left-0 z-20 flex flex-col bg-[#1f2937] shadow-lg transition-transform duration-300 ease-in-out transform ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} md:relative md:translate-x-0 md:w-64 border-r border-gray-700`}>
+        <div className="flex items-center justify-between p-4 h-16 border-b border-gray-700 md:hidden">
+          <div className="flex items-center cursor-pointer" onClick={navigateHome} title="Go to Home Page">
+            <ShieldCheck className="h-7 w-7 text-[#0057e7]" />
+            <h1 className="text-xl font-semibold text-gray-100 ml-2">ClaimGuardian</h1>
+          </div>
+          <button onClick={() => setSidebarOpen(false)} className={`md:hidden text-gray-400 hover:text-white ${focusRingClasses}`}>
+            <X size={24} />
+          </button>
+        </div>
+        <div className="hidden md:flex items-center p-4 h-16 border-b border-gray-700">
+          <LayoutDashboard className="h-6 w-6 text-[#0057e7] mr-2" />
+          <h2 className="text-lg font-semibold text-gray-100">Dashboard Menu</h2>
+        </div>
+        <nav className="flex-1 p-4 space-y-2 overflow-y-auto">
+          <DashboardTab icon={<LayoutDashboard size={20} />} label="Dashboard Home" isActive={activeTab === 'dashboardHome'} onClick={() => switchTab('dashboardHome')} />
+          <DashboardTab icon={<FileText size={20} />} label="Policies" isActive={activeTab === 'policies'} onClick={() => switchTab('policies')} />
+          <DashboardTab icon={<Building size={20} />} label="Properties" isActive={activeTab === 'properties'} onClick={() => switchTab('properties')} />
+          <DashboardTab icon={<UploadCloud size={20} />} label="Upload Policy" isActive={activeTab === 'uploadPolicy'} onClick={() => switchTab('uploadPolicy')} />
+          <DashboardTab icon={<MessageSquare size={20} />} label="Review Policy (Chat)" isActive={activeTab === 'reviewPolicy'} onClick={() => switchTab('reviewPolicy')} />
+
+          <p className="px-3 pt-4 pb-2 text-xs font-medium text-gray-500 uppercase">Future Features</p>
+          <DashboardTab icon={<Search size={20} />} label="Claim Tracking" isDisabled={true} />
+          {/* <DashboardTab icon={<FileText size={20} />} label="Policy Comparison" isDisabled={true} /> */}
+          <DashboardTab icon={<HeartHandshake size={20} />} label="Recovery" isDisabled={true} />
+          <DashboardTab icon={<Library size={20} />} label="Resources" isDisabled={true} />
+          <DashboardTab icon={<PieChart size={20} />} label="Analytics" isDisabled={true} />
+          <DashboardTab icon={<Package size={20} />} label="Asset & Inventory" isDisabled={true} />
+          <DashboardTab icon={<UsersRound size={20} />} label="Social" isDisabled={true} />
+        </nav>
+        <div className="p-4 border-t border-gray-700 mt-auto">
+          <DashboardTab icon={<Settings size={20} />} label="Settings" isDisabled={true}/>
+          <DashboardTab icon={<HelpCircle size={20} />} label="Help & Support" isDisabled={true}/>
+          <DashboardTab icon={<LogOut size={20} />} label="Logout" onClick={navigateHome} />
+        </div>
+      </aside>
+      <main className="flex-1 flex flex-col overflow-y-auto">
+        <header className="sticky top-0 z-10 flex items-center justify-between h-16 px-6 bg-[#1f2937] bg-opacity-90 backdrop-blur-md border-b border-gray-700">
+          <button onClick={() => setSidebarOpen(true)} className={`md:hidden text-gray-300 hover:text-white ${focusRingClasses}`}>
+            <Menu size={24} />
+          </button>
+          <div className="text-xl font-semibold text-gray-100">
+            {activeTab === 'dashboardHome' && 'Welcome to Your Dashboard'}
+            {activeTab === 'policies' && 'Insurance Policies'}
+            {activeTab === 'properties' && 'Property Management'}
+            {activeTab === 'uploadPolicy' && 'Upload Your Insurance Policy'}
+            {activeTab === 'reviewPolicy' && 'Review Policy with AI Chatbot'}
+          </div>
+          <div className="flex items-center space-x-4">
+            <button className={`text-gray-400 hover:text-white relative ${focusRingClasses}`} title="Notifications">
+              <Bell size={22} />
+              <span className="absolute top-0 right-0 block h-2 w-2 rounded-full bg-[#ef4444] ring-2 ring-[#1f2937]"></span>
+            </button>
+            <UserCircle size={28} className="text-gray-400" title="User Profile"/>
+          </div>
+        </header>
+        <div className="p-6 md:p-10">
+          {activeTab === 'dashboardHome' && <DashboardHomeContent glassPanelClasses={glassPanelClasses} />}
+          {activeTab === 'policies' && <PoliciesTab glassPanelClasses={glassPanelClasses} focusRingClasses={focusRingClasses} />}
+          {activeTab === 'properties' && <PropertyTab glassPanelClasses={glassPanelClasses} focusRingClasses={focusRingClasses} />}
+          {activeTab === 'uploadPolicy' && <UploadPolicyTab glassPanelClasses={glassPanelClasses} focusRingClasses={focusRingClasses}/>}
+          {activeTab === 'reviewPolicy' && <ReviewPolicyChatbot glassPanelClasses={glassPanelClasses} focusRingClasses={focusRingClasses}/>}
+        </div>
+      </main>
+    </div>
   );
 };
 
@@ -340,153 +345,444 @@ const DashboardTab = ({ icon, label, isActive, onClick, isDisabled }) => {
 
 // DashboardHomeContent Component
 const DashboardHomeContent = ({ glassPanelClasses }) => {
-    return ( <div className={`${glassPanelClasses} p-8`}> <h1 className="text-3xl font-bold mb-6 text-gray-100">Welcome to ClaimGuardian!</h1> <p className="text-gray-300 mb-4 leading-relaxed"> This is your central hub for managing your insurance policies. Use the tabs on the left to navigate: </p> <ul className="list-disc list-inside text-gray-300 space-y-2 mb-6"> <li><strong className="text-[#0057e7]">Upload Policy:</strong> Add new insurance documents to your account.</li> <li><strong className="text-[#00e5ff]">Review Policy (Chat):</strong> Ask our AI assistant questions about your uploaded policies.</li> </ul> <p className="text-gray-400 text-sm leading-relaxed"> We are continuously working on adding more features like claim tracking and policy comparison. Stay tuned! </p> <div className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-6"> <div className="bg-gray-700 p-6 rounded-lg shadow-lg"> <h3 className="text-xl font-semibold text-gray-100 mb-3">Quick Stats</h3> <p className="text-gray-300">Policies Uploaded: <span className="font-bold text-[#0057e7]">0</span></p> <p className="text-gray-300">Queries Answered: <span className="font-bold text-[#00e5ff]">0</span></p> </div> <div className="bg-gray-700 p-6 rounded-lg shadow-lg"> <h3 className="text-xl font-semibold text-gray-100 mb-3">Next Steps</h3> <p className="text-gray-300">1. Go to "Upload Policy" to add your first document.</p> <p className="text-gray-300">2. Try out the "Review Policy" chat to understand your coverage.</p> </div> </div> </div> );
+    // This component displays a welcome message and quick stats on the dashboard home.
+    return (
+        <div className={`${glassPanelClasses} p-8`}>
+            <h1 className="text-3xl font-bold mb-6 text-gray-100">Welcome to ClaimGuardian!</h1>
+            <p className="text-gray-300 mb-4 leading-relaxed">
+                This is your central hub for managing your properties and insurance policies. Use the tabs on the left to navigate:
+            </p>
+            <ul className="list-disc list-inside text-gray-300 space-y-2 mb-6">
+                <li><strong className="text-[#0057e7]">Policies:</strong> View, manage, and get insights on all your insurance policies.</li>
+                <li><strong className="text-[#0057e7]">Properties:</strong> Add and manage your insured assets like homes, vehicles, and valuables.</li>
+                <li><strong className="text-[#0057e7]">Upload Policy:</strong> Add new insurance documents to your account (can also be done via Policies/Properties tabs).</li>
+                <li><strong className="text-[#00e5ff]">Review Policy (Chat):</strong> Ask our AI assistant questions about your uploaded policies.</li>
+            </ul>
+            <p className="text-gray-400 text-sm leading-relaxed">
+                We are continuously working on adding more features like claim tracking and policy comparison. Stay tuned!
+            </p>
+            <div className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="bg-gray-700 p-6 rounded-lg shadow-lg">
+                    <h3 className="text-xl font-semibold text-gray-100 mb-3">Quick Stats (Mock)</h3>
+                    <p className="text-gray-300">Active Policies: <span className="font-bold text-[#0057e7]">4</span></p>
+                    <p className="text-gray-300">Properties Managed: <span className="font-bold text-[#0057e7]">4</span></p>
+                    <p className="text-gray-300">Avg. Premium/Yr: <span className="font-bold text-[#00e5ff]">$787</span></p>
+                </div>
+                <div className="bg-gray-700 p-6 rounded-lg shadow-lg">
+                    <h3 className="text-xl font-semibold text-gray-100 mb-3">Next Steps</h3>
+                    <p className="text-gray-300">1. Explore the "Policies" tab to see your insurance overview.</p>
+                    <p className="text-gray-300">2. Add a new property or policy if you haven't already.</p>
+                    <p className="text-gray-300">3. Try the "Review Policy" chat to understand your coverage better.</p>
+                </div>
+            </div>
+        </div>
+    );
 };
 
-// UploadPolicyTab Component
-const UploadPolicyTab = ({ glassPanelClasses, focusRingClasses }) => { const [selectedFile, setSelectedFile] = useState(null); const [uploadStatus, setUploadStatus] = useState(''); const [uploadMessage, setUploadMessage] = useState(''); const [policyDetails, setPolicyDetails] = useState(null); const fileInputRef = useRef(null); const handleFileChange = (event) => { const file = event.target.files[0]; if (file && file.type === "application/pdf") { setSelectedFile(file); setUploadStatus(''); setUploadMessage(''); setPolicyDetails(null); } else { setSelectedFile(null); setUploadStatus('error'); setUploadMessage('Please select a PDF file.'); } }; const handleUpload = async () => { if (!selectedFile) { setUploadStatus('error'); setUploadMessage('Please select a file to upload.'); return; } setUploadStatus('uploading'); setUploadMessage(`Uploading ${selectedFile.name}...`); try { console.log("Mocking Supabase storage upload..."); await new Promise(resolve => setTimeout(resolve, 1000)); const extractedText = `Mock extracted text from ${selectedFile.name}. Policy Number: POL12345...`; const parsedData = { policy_number: `POL-${Math.random().toString(36).substr(2, 7).toUpperCase()}`, insured_name: "Jane Doe (Mock)", coverage_start_date: new Date().toISOString().split('T')[0], coverage_end_date: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], document_name: selectedFile.name, processed_text: extractedText, }; console.log("Mocking Supabase DB insert..."); await new Promise(resolve => setTimeout(resolve, 500)); setPolicyDetails(parsedData); setUploadStatus('success'); setUploadMessage(`${selectedFile.name} uploaded and processed successfully!`); } catch (error) { console.error("Upload error:", error); setUploadStatus('error'); setUploadMessage(`Failed to upload. ${error.message || ''}`); } }; return ( <div className={`${glassPanelClasses} p-8`}> <h2 className="text-2xl font-semibold mb-6 text-gray-100">Upload Your Insurance Policy</h2> <p className="text-gray-300 mb-6 leading-relaxed"> Upload your insurance policy document (PDF format). We'll process it and store it securely. </p> <div className="mb-6"> <label htmlFor="file-upload-input-policy" className="block text-sm font-medium text-gray-300 mb-2"> Select Policy Document (PDF only) </label> <div className={`mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-gray-600 border-dashed rounded-md hover:border-[#0057e7] transition-colors ${focusRingClasses}`}> <div className="space-y-1 text-center"> <UploadCloud className="mx-auto h-12 w-12 text-gray-500" /> <div className="flex text-sm text-gray-400"> <label htmlFor="file-upload-input-policy" className={`relative cursor-pointer bg-gray-700 rounded-md font-medium text-[#0057e7] hover:text-[#00e5ff] px-2 py-1 ${focusRingClasses}`} > <span>Upload a file</span> <input id="file-upload-input-policy" name="file-upload-input-policy" type="file" className="sr-only" accept=".pdf" onChange={handleFileChange} ref={fileInputRef} /> </label> <p className="pl-1">or drag and drop</p> </div> <p className="text-xs text-gray-500">PDF up to 10MB</p> </div> </div> {selectedFile && <p className="mt-2 text-sm text-gray-400">Selected file: {selectedFile.name}</p>} </div> <button onClick={handleUpload} disabled={!selectedFile || uploadStatus === 'uploading'} className={`w-full inline-flex items-center justify-center gap-2 px-6 py-3 rounded-md text-white bg-gradient-to-r from-[#0057e7] to-[#00e5ff] transition transform-gpu hover:scale-[1.02] active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed ${focusRingClasses}`} > {uploadStatus === 'uploading' ? ( <> <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"> <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle> <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path> </svg> Processing... </> ) : ( <> <UploadCloud size={20} className="mr-2" /> Upload and Process Policy </> )} </button> {uploadMessage && ( <div className={`mt-4 p-4 rounded-md text-sm ${ uploadStatus === 'success' ? 'bg-[#10b981]/30 text-green-300 border border-green-500' : uploadStatus === 'error' ? 'bg-[#ef4444]/30 text-red-300 border border-red-500' : 'bg-[#0057e7]/30 text-blue-300 border border-blue-500' }`}> {uploadMessage} </div> )} {policyDetails && uploadStatus === 'success' && ( <div className="mt-6 p-6 bg-gray-700 rounded-lg border border-gray-600"> <h3 className="text-lg font-semibold text-gray-100 mb-3">Processed Policy Information:</h3> <ul className="space-y-1 text-gray-300 text-sm"> <li><strong>Document Name:</strong> {policyDetails.document_name}</li> <li><strong>Policy Number:</strong> {policyDetails.policy_number}</li> <li className="mt-2 pt-2 border-t border-gray-600"> <strong className="text-gray-200">Extracted Text (Snippet):</strong> <code className="block font-mono text-xs bg-gray-800 text-gray-400 p-2 mt-1 rounded max-h-20 overflow-y-auto"> {policyDetails.processed_text.substring(0, 200)}... </code> </li> </ul> <p className="mt-4 text-sm text-[#10b981]"> You can now go to the "Review Policy (Chat)" tab to ask questions about this policy. </p> </div> )} </div> ); };
+// UploadPolicyTab Component (Can be eventually merged or called from PoliciesTab wizard)
+const UploadPolicyTab = ({ glassPanelClasses, focusRingClasses }) => {
+    // This component handles the uploading of policy documents.
+    const [selectedFile, setSelectedFile] = useState(null);
+    const [uploadStatus, setUploadStatus] = useState(''); // '', 'uploading', 'success', 'error'
+    const [uploadMessage, setUploadMessage] = useState('');
+    const [policyDetails, setPolicyDetails] = useState(null);
+    const fileInputRef = useRef(null);
 
-// ReviewPolicyChatbot Component
-const ReviewPolicyChatbot = ({ glassPanelClasses, focusRingClasses }) => { const [messages, setMessages] = useState([]); const [inputValue, setInputValue] = useState(''); const [isLoading, setIsLoading] = useState(false); const [showConsentModal, setShowConsentModal] = useState(false); const [consentGiven, setConsentGiven] = useState(false); const [availableContexts, setAvailableContexts] = useState([]); const [selectedContextId, setSelectedContextId] = useState(''); const [currentContextText, setCurrentContextText] = useState(''); const [chatHistory, setChatHistory] = useState({}); const messagesEndRef = useRef(null); const suggestedQuestions = [ "What is my deductible?", "Am I covered for flood damage?", "What is the policy period?", "Summarize my liability coverage.", ]; useEffect(() => { const storedConsent = localStorage.getItem('claimGuardianAiConsent'); if (storedConsent === 'true') { setConsentGiven(true); } else { setShowConsentModal(true); } }, []); useEffect(() => { if (!consentGiven) return; const fetchContexts = async () => { setIsLoading(true); try { const { data: policiesData, error: policiesError } = await supabase.from('policy_data').select('id, name, type, processed_text'); if (policiesError) throw policiesError; const combinedContexts = (policiesData || []).map(item => ({ id: item.id, name: item.name || `Document ${item.id}`, type: item.type || 'document', processed_text: item.processed_text })); setAvailableContexts(combinedContexts); if (combinedContexts.length > 0) { if (!selectedContextId) { handleContextChange(combinedContexts[0].id, combinedContexts); } } else { setMessages([{ id: Date.now(), text: "No policies or documents found to discuss. Please upload a policy first.", sender: 'bot' }]); } } catch (error) { console.error("Error fetching contexts:", error); setMessages([{ id: Date.now(), text: "Sorry, I encountered an error trying to load available policies/documents.", sender: 'bot' }]); } setIsLoading(false); }; fetchContexts(); }, [consentGiven, selectedContextId]); const handleContextChange = (contextId, contexts = availableContexts) => { setSelectedContextId(contextId); const selectedCtx = contexts.find(ctx => ctx.id === contextId); if (selectedCtx) { setCurrentContextText(selectedCtx.processed_text); const history = chatHistory[contextId] || [{ id: Date.now(), text: `Switched to ${selectedCtx.name}. How can I help you with this document/policy?`, sender: 'bot' }]; setMessages(history); } else { setCurrentContextText(''); setMessages([{ id: Date.now(), text: "Please select a policy or document to discuss.", sender: 'bot' }]); } }; useEffect(() => { if (selectedContextId && messages.length > 0) { setChatHistory(prevHistory => ({ ...prevHistory, [selectedContextId]: messages })); } }, [messages, selectedContextId]); const scrollToBottom = () => { messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }); }; useEffect(scrollToBottom, [messages]); const handleSendMessage = async (e, question) => { if (e) e.preventDefault(); const query = question || inputValue; if (query.trim() === '' || isLoading) return; if (!consentGiven) { setShowConsentModal(true); return; } if (!selectedContextId) { setMessages(prev => [...prev, {id: Date.now(), text: "Please select a policy or document from the dropdown above before asking a question.", sender: 'bot'}]); return; } const newUserMessage = { id: Date.now(), text: query, sender: 'user' }; setMessages(prevMessages => [...prevMessages, newUserMessage]); if (!question) setInputValue(''); setIsLoading(true); try { const responseText = await mockNlpProcess(query, currentContextText); const botResponse = { id: Date.now() + 1, text: responseText, sender: 'bot' }; setMessages(prevMessages => [...prevMessages, botResponse]); } catch (error) { console.error("Chatbot error:", error); const errorResponse = { id: Date.now() + 1, text: "Sorry, I encountered an issue processing your request.", sender: 'bot' }; setMessages(prevMessages => [...prevMessages, errorResponse]); } setIsLoading(false); }; const handleConsent = (agreed) => { if (agreed) { localStorage.setItem('claimGuardianAiConsent', 'true'); setConsentGiven(true); } else { setMessages([{id: Date.now(), text: "AI processing consent is required to use this feature. You can grant consent at any time.", sender: 'bot'}]); } setShowConsentModal(false); }; const ConsentModal = () => ( <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4"> <div className={`${glassPanelClasses} p-8 max-w-lg w-full`}> <div className="flex items-center mb-4"> <HelpCircleIcon size={24} className="text-[#00e5ff] mr-3" /> <h3 className="text-xl font-semibold text-gray-100">AI Processing Consent</h3> </div> <p className="text-sm text-gray-300 mb-6 leading-relaxed"> To help you understand your insurance policy, ClaimGuardian uses AI services (like OpenAI) to process the content of your selected policy or document. Your data will be handled securely and used solely for the purpose of answering your questions within this chat. By clicking "Agree", you consent to this processing. You can revoke this consent by clearing site data in your browser settings. </p> <div className="flex justify-end space-x-3"> <button onClick={() => handleConsent(false)} className={`px-4 py-2 rounded-md bg-gray-600 text-gray-200 hover:bg-gray-500 transition-colors ${focusRingClasses}`}>Disagree</button> <button onClick={() => handleConsent(true)} className={`px-4 py-2 rounded-md text-white bg-gradient-to-r from-[#0057e7] to-[#00e5ff] transition transform-gpu hover:scale-[1.02] active:scale-95 ${focusRingClasses}`}>Agree</button> </div> </div> </div> ); if (showConsentModal) { return <ConsentModal />; } return ( <div className={`${glassPanelClasses} flex flex-col h-[calc(100vh-10rem-4rem)] md:h-[calc(100vh-12rem-4rem)] max-h-[700px] p-0`}> <div className="p-6 border-b border-gray-700"> <h2 className="text-2xl font-semibold text-gray-100 mb-3">Policy Oracle Chat</h2> <div className="flex flex-col sm:flex-row gap-4 items-center"> <label htmlFor="contextSelector" className="text-sm font-medium text-gray-300 whitespace-nowrap">Discussing:</label> <select id="contextSelector" value={selectedContextId} onChange={(e) => handleContextChange(e.target.value)} disabled={!consentGiven || isLoading} className={`flex-grow p-2.5 bg-gray-700 border border-gray-600 rounded-md outline-none text-gray-200 ${focusRingClasses} focus:border-transparent disabled:opacity-60`} > <option value="" disabled>Select a Policy or Document...</option> {availableContexts.map(ctx => ( <option key={ctx.id} value={ctx.id}> {ctx.name} ({ctx.type === 'policy' ? 'Policy' : 'Document'}) </option> ))} </select> </div> </div> <div className="flex-grow p-6 space-y-4 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-600 scrollbar-track-gray-700"> {messages.map(message => ( <div key={message.id} className={`flex ${message.sender === 'user' ? 'justify-end' : 'justify-start'}`}> <div className={`max-w-xs lg:max-w-md px-4 py-3 rounded-xl shadow ${ message.sender === 'user' ? 'bg-[#0057e7] text-white rounded-br-none' : 'bg-gray-700 text-gray-200 rounded-bl-none' }`} > <p className="text-sm whitespace-pre-wrap">{message.text}</p> </div> </div> ))} {isLoading && messages.length > 0 && messages[messages.length-1].sender === 'user' && ( <div className="flex justify-start"> <div className="max-w-xs lg:max-w-md px-4 py-3 rounded-xl shadow bg-gray-700 text-gray-200 rounded-bl-none"> <div className="flex items-center"> <div className="animate-pulse flex space-x-1"> <div className="w-1.5 h-1.5 bg-gray-400 rounded-full"></div> <div className="w-1.5 h-1.5 bg-gray-400 rounded-full animation-delay-200"></div> <div className="w-1.5 h-1.5 bg-gray-400 rounded-full animation-delay-400"></div> </div> <span className="text-sm ml-2">Assistant is typing...</span> </div> </div> </div> )} <div ref={messagesEndRef} /> </div> {consentGiven && selectedContextId && messages.length <= 2 && ( <div className="p-4 border-t border-gray-700"> <p className="text-xs text-gray-400 mb-2 text-center">Or try asking:</p> <div className="flex flex-wrap justify-center gap-2"> {suggestedQuestions.slice(0,3).map(q => ( <button key={q} onClick={() => handleSendMessage(null, q)} disabled={isLoading} className={`px-3 py-1.5 text-xs rounded-full bg-gray-600 hover:bg-gray-500 text-gray-200 transition-colors ${focusRingClasses} disabled:opacity-60`} > {q} </button> ))} </div> </div> )} <form onSubmit={handleSendMessage} className="p-4 border-t border-gray-700"> <div className="flex items-center space-x-2"> <input type="text" value={inputValue} onChange={(e) => setInputValue(e.target.value)} placeholder={!consentGiven ? "Please grant consent to chat" : isLoading ? "Assistant is typing..." : "Ask a question about your policy..."} className={`flex-grow p-3 bg-gray-700 border border-gray-600 rounded-lg outline-none text-gray-200 placeholder-gray-400 ${focusRingClasses} focus:border-transparent`} disabled={isLoading || !consentGiven} /> <button type="submit" disabled={isLoading || inputValue.trim() === '' || !consentGiven} className={`inline-flex items-center justify-center gap-2 px-6 py-3 rounded-md text-white bg-gradient-to-r from-[#0057e7] to-[#00e5ff] transition transform-gpu hover:scale-[1.02] active:scale-95 disabled:opacity-50 ${focusRingClasses}`} > Send </button> </div> </form> </div> ); };
-
-// PropertyTab Component
-const PropertyTab = ({ glassPanelClasses, focusRingClasses }) => { 
-    const [currentView, setCurrentView] = useState('list'); 
-    const [selectedProperty, setSelectedProperty] = useState(null); 
-    const [properties, setProperties] = useState([]); 
-    const [isLoading, setIsLoading] = useState(true); 
-
-    useEffect(() => { 
-        const fetchProperties = async () => { 
-            setIsLoading(true); 
-            const { data, error } = await supabase.from('properties').select(); 
-            if (error) { 
-                console.error("Error fetching properties:", error); 
-            } else { 
-                setProperties(data || []); 
-            } 
-            setIsLoading(false); 
-        }; 
-        fetchProperties(); 
-    }, []); 
-
-    const handleViewDetail = (property) => { 
-        setSelectedProperty(property); 
-        setCurrentView('detail'); 
-    }; 
-
-    const handleAddNewProperty = () => { 
-        setSelectedProperty(null); 
-        setCurrentView('form'); 
-    }; 
-    
-    const handleFormSubmit = (newProperty) => { 
-        setProperties(prev => [...prev, { ...newProperty, id: `prop${prev.length + 1}`, created_at: new Date().toISOString() }]); 
-        setCurrentView('list'); 
+    const handleFileChange = (event) => {
+        const file = event.target.files[0];
+        if (file && file.type === "application/pdf") {
+            setSelectedFile(file);
+            setUploadStatus('');
+            setUploadMessage('');
+            setPolicyDetails(null);
+        } else {
+            setSelectedFile(null);
+            setUploadStatus('error');
+            setUploadMessage('Please select a PDF file.');
+        }
     };
 
-    if (isLoading) { 
-        return <div className={`${glassPanelClasses} p-8 text-center`}><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#0057e7] mx-auto"></div><p className="mt-4">Loading properties...</p></div>; 
-    } 
+    const handleUpload = async () => {
+        if (!selectedFile) {
+            setUploadStatus('error');
+            setUploadMessage('Please select a file to upload.');
+            return;
+        }
+        setUploadStatus('uploading');
+        setUploadMessage(`Uploading ${selectedFile.name}...`);
+        try {
+            const storagePath = `standalone_policies/${Date.now()}_${selectedFile.name}`;
+            const { data: storageData, error: storageError } = await supabase.storage.from('policy_documents').upload(storagePath, selectedFile);
+            if (storageError) throw storageError;
 
-    return ( 
-        <div> 
-            {currentView === 'list' && ( 
-                <PropertyList 
-                    properties={properties} 
-                    onViewDetail={handleViewDetail} 
-                    onAddNew={handleAddNewProperty} 
-                    glassPanelClasses={glassPanelClasses} 
-                    focusRingClasses={focusRingClasses} 
-                /> 
-            )} 
-            {currentView === 'detail' && selectedProperty && ( 
-                <PropertyDetail 
-                    property={selectedProperty} 
-                    onBack={() => setCurrentView('list')} 
-                    glassPanelClasses={glassPanelClasses} 
-                    focusRingClasses={focusRingClasses} 
-                /> 
-            )} 
-            {currentView === 'form' && ( 
-                <PropertyForm 
-                    onCancel={() => setCurrentView('list')} 
-                    onSubmit={handleFormSubmit} 
-                    glassPanelClasses={glassPanelClasses} 
-                    focusRingClasses={focusRingClasses} 
-                /> 
-            )} 
-        </div> 
-    ); 
+            const extractedText = `Mock extracted text from ${selectedFile.name}. Policy Number: POL-${Math.random().toString(36).substring(2, 9).toUpperCase()}. This policy covers general liability.`;
+            const parsedData = {
+                name: selectedFile.name,
+                type: 'policy',
+                processed_text: extractedText,
+                document_url: storageData.path,
+                policy_number: extractedText.match(/Policy Number: (\S+)/)?.[1] || 'N/A',
+                carrier: "Unknown Carrier (Standalone Upload)", // Default carrier
+                property_name: "Unassigned Property", // Default property
+                premium: 0, // Default premium
+                renewal_date: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], // Default renewal
+                status: "Active",
+                category_key: "general" // A general category for standalone uploads
+            };
+
+            const { data: dbData, error: dbError } = await supabase.from('policy_data').insert([parsedData]);
+            if (dbError) throw dbError;
+
+            setPolicyDetails(dbData[0]);
+            setUploadStatus('success');
+            setUploadMessage(`${selectedFile.name} uploaded and processed successfully! This policy can be linked to a property later.`);
+            setSelectedFile(null);
+            if(fileInputRef.current) fileInputRef.current.value = "";
+
+        } catch (error) {
+            console.error("Upload error:", error);
+            setUploadStatus('error');
+            setUploadMessage(`Failed to upload. ${error.message || 'Unknown error'}`);
+        }
+    };
+
+    return ( <div className={`${glassPanelClasses} p-8`}> <h2 className="text-2xl font-semibold mb-6 text-gray-100">Upload Standalone Insurance Policy</h2> <p className="text-gray-300 mb-6 leading-relaxed"> Upload a policy document (PDF format). It will be processed and stored. You can link it to a specific property later from the 'Properties' or 'Policies' tab. </p> <div className="mb-6"> <label htmlFor="file-upload-input-policy-standalone" className="block text-sm font-medium text-gray-300 mb-2"> Select Policy Document (PDF only) </label> <div className={`mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-gray-600 border-dashed rounded-md hover:border-[#0057e7] transition-colors ${focusRingClasses}`}> <div className="space-y-1 text-center"> <UploadCloud className="mx-auto h-12 w-12 text-gray-500" /> <div className="flex text-sm text-gray-400"> <label htmlFor="file-upload-input-policy-standalone" className={`relative cursor-pointer bg-gray-700 rounded-md font-medium text-[#0057e7] hover:text-[#00e5ff] px-2 py-1 ${focusRingClasses}`} > <span>Upload a file</span> <input id="file-upload-input-policy-standalone" name="file-upload-input-policy-standalone" type="file" className="sr-only" accept=".pdf" onChange={handleFileChange} ref={fileInputRef} /> </label> <p className="pl-1">or drag and drop</p> </div> <p className="text-xs text-gray-500">PDF up to 10MB</p> </div> </div> {selectedFile && <p className="mt-2 text-sm text-gray-400">Selected file: {selectedFile.name}</p>} </div> <button onClick={handleUpload} disabled={!selectedFile || uploadStatus === 'uploading'} className={`w-full inline-flex items-center justify-center gap-2 px-6 py-3 rounded-md text-white bg-gradient-to-r from-[#0057e7] to-[#00e5ff] transition transform-gpu hover:scale-[1.02] active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed ${focusRingClasses}`} > {uploadStatus === 'uploading' ? ( <> <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"> <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle> <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path> </svg> Processing... </> ) : ( <> <UploadCloud size={20} className="mr-2" /> Upload and Process Policy </> )} </button> {uploadMessage && ( <div className={`mt-4 p-4 rounded-md text-sm ${ uploadStatus === 'success' ? 'bg-[#10b981]/30 text-green-300 border border-green-500' : uploadStatus === 'error' ? 'bg-[#ef4444]/30 text-red-300 border border-red-500' : 'bg-[#0057e7]/30 text-blue-300 border border-blue-500' }`}> {uploadMessage} </div> )} {policyDetails && uploadStatus === 'success' && ( <div className="mt-6 p-6 bg-gray-700 rounded-lg border border-gray-600"> <h3 className="text-lg font-semibold text-gray-100 mb-3">Processed Policy Information:</h3> <ul className="space-y-1 text-gray-300 text-sm"> <li><strong>Document Name:</strong> {policyDetails.name}</li> <li><strong>Policy Number (Detected):</strong> {policyDetails.policy_number || 'Not detected'}</li> <li className="mt-2 pt-2 border-t border-gray-600"> <strong className="text-gray-200">Extracted Text (Snippet):</strong> <code className="block font-mono text-xs bg-gray-800 text-gray-400 p-2 mt-1 rounded max-h-20 overflow-y-auto"> {policyDetails.processed_text.substring(0, 200)}... </code> </li> </ul> <p className="mt-4 text-sm text-[#10b981]"> You can now go to the "Review Policy (Chat)" tab to ask questions about this policy. </p> </div> )} </div> ); };
+
+
+// ReviewPolicyChatbot Component
+const ReviewPolicyChatbot = ({ glassPanelClasses, focusRingClasses }) => {
+    // This component provides an AI chat interface to review uploaded policies.
+    const [messages, setMessages] = useState([]);
+    const [inputValue, setInputValue] = useState('');
+    const [isLoading, setIsLoading] = useState(false);
+    const [showConsentModal, setShowConsentModal] = useState(false);
+    const [consentGiven, setConsentGiven] = useState(false);
+    const [availableContexts, setAvailableContexts] = useState([]);
+    const [selectedContextId, setSelectedContextId] = useState('');
+    const [currentContextText, setCurrentContextText] = useState('');
+    const [chatHistory, setChatHistory] = useState({});
+    const messagesEndRef = useRef(null);
+
+    const suggestedQuestions = [
+        "What is my deductible?",
+        "Am I covered for flood damage?",
+        "What is the policy period?",
+        "Summarize my liability coverage.",
+    ];
+
+    useEffect(() => {
+        const storedConsent = localStorage.getItem('claimGuardianAiConsent');
+        if (storedConsent === 'true') {
+            setConsentGiven(true);
+        } else {
+            setShowConsentModal(true);
+        }
+    }, []);
+
+    useEffect(() => {
+        if (!consentGiven) return;
+        const fetchContexts = async () => {
+            setIsLoading(true);
+            try {
+                const { data, error } = await supabase.from('policy_data').select('id, name, type, processed_text');
+                if (error) throw error;
+                const combinedContexts = (data || []).map(item => ({
+                    id: item.id,
+                    name: item.name || `Document ${item.id}`,
+                    type: item.type || 'document',
+                    processed_text: item.processed_text || ''
+                }));
+                setAvailableContexts(combinedContexts);
+                if (combinedContexts.length > 0) {
+                    const currentSelectedExists = combinedContexts.some(ctx => ctx.id === selectedContextId);
+                    if (!selectedContextId || !currentSelectedExists) {
+                        handleContextChange(combinedContexts[0].id, combinedContexts);
+                    } else {
+                        const currentCtx = combinedContexts.find(ctx => ctx.id === selectedContextId);
+                        if (currentCtx) setCurrentContextText(currentCtx.processed_text);
+                    }
+                } else {
+                    setMessages([{ id: Date.now(), text: "No policies or documents found. Please upload a policy first.", sender: 'bot' }]);
+                    setSelectedContextId('');
+                    setCurrentContextText('');
+                }
+            } catch (error) {
+                console.error("Error fetching contexts:", error);
+                setMessages([{ id: Date.now(), text: "Sorry, I encountered an error trying to load available policies/documents.", sender: 'bot' }]);
+            }
+            setIsLoading(false);
+        };
+        fetchContexts();
+    }, [consentGiven]);
+
+
+    const handleContextChange = (contextId, contexts = availableContexts) => {
+        setSelectedContextId(contextId);
+        const selectedCtx = contexts.find(ctx => ctx.id === contextId);
+        if (selectedCtx) {
+            setCurrentContextText(selectedCtx.processed_text);
+            const history = chatHistory[contextId] || [{ id: Date.now(), text: `Switched to ${selectedCtx.name}. How can I help you with this document/policy?`, sender: 'bot' }];
+            setMessages(history);
+        } else {
+            setCurrentContextText('');
+            setMessages([{ id: Date.now(), text: "Please select a policy or document to discuss.", sender: 'bot' }]);
+        }
+    };
+
+    useEffect(() => {
+        if (selectedContextId && messages.length > 0) {
+            setChatHistory(prevHistory => ({ ...prevHistory, [selectedContextId]: messages }));
+        }
+    }, [messages, selectedContextId]);
+
+    const scrollToBottom = () => { messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }); };
+    useEffect(scrollToBottom, [messages]);
+
+    const handleSendMessage = async (e, question) => {
+        if (e) e.preventDefault();
+        const query = question || inputValue;
+        if (query.trim() === '' || isLoading) return;
+        if (!consentGiven) { setShowConsentModal(true); return; }
+        if (!selectedContextId) {
+            setMessages(prev => [...prev, {id: Date.now(), text: "Please select a policy or document from the dropdown above.", sender: 'bot'}]);
+            return;
+        }
+        const newUserMessage = { id: Date.now(), text: query, sender: 'user' };
+        setMessages(prevMessages => [...prevMessages, newUserMessage]);
+        if (!question) setInputValue('');
+        setIsLoading(true);
+        try {
+            const responseText = await mockNlpProcess(query, currentContextText);
+            const botResponse = { id: Date.now() + 1, text: responseText, sender: 'bot' };
+            setMessages(prevMessages => [...prevMessages, botResponse]);
+        } catch (error) {
+            console.error("Chatbot error:", error);
+            setMessages(prevMessages => [...prevMessages, { id: Date.now() + 1, text: "Sorry, I encountered an issue.", sender: 'bot' }]);
+        }
+        setIsLoading(false);
+    };
+
+    const handleConsent = (agreed) => {
+        if (agreed) {
+            localStorage.setItem('claimGuardianAiConsent', 'true');
+            setConsentGiven(true);
+            if (messages.length === 0 && availableContexts.length === 0) {
+                 setMessages([{ id: Date.now(), text: "Thank you. Please upload a policy to begin.", sender: 'bot' }]);
+            } else if (messages.length === 0 && !selectedContextId && availableContexts.length > 0) {
+                 setMessages([{ id: Date.now(), text: "Thank you. Please select a policy to discuss.", sender: 'bot' }]);
+            }
+        } else {
+            setMessages([{id: Date.now(), text: "AI consent is required for this feature.", sender: 'bot'}]);
+        }
+        setShowConsentModal(false);
+    };
+
+    const ConsentModal = () => ( <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4"> <div className={`${glassPanelClasses} p-8 max-w-lg w-full`}> <div className="flex items-center mb-4"> <HelpCircleIcon size={24} className="text-[#00e5ff] mr-3" /> <h3 className="text-xl font-semibold text-gray-100">AI Processing Consent</h3> </div> <p className="text-sm text-gray-300 mb-6 leading-relaxed"> To help you understand your insurance policy, ClaimGuardian uses AI services to process the content of your selected policy or document. Your data will be handled securely and used solely for the purpose of answering your questions within this chat. By clicking "Agree", you consent to this processing. </p> <div className="flex justify-end space-x-3"> <button onClick={() => handleConsent(false)} className={`px-4 py-2 rounded-md bg-gray-600 text-gray-200 hover:bg-gray-500 transition-colors ${focusRingClasses}`}>Disagree</button> <button onClick={() => handleConsent(true)} className={`px-4 py-2 rounded-md text-white bg-gradient-to-r from-[#0057e7] to-[#00e5ff] transition transform-gpu hover:scale-[1.02] active:scale-95 ${focusRingClasses}`}>Agree</button> </div> </div> </div> );
+
+    if (showConsentModal && !consentGiven) { return <ConsentModal />; }
+
+    return ( <div className={`${glassPanelClasses} flex flex-col h-[calc(100vh-10rem-4rem)] md:h-[calc(100vh-12rem-4rem)] max-h-[700px] p-0`}> <div className="p-6 border-b border-gray-700"> <h2 className="text-2xl font-semibold text-gray-100 mb-3">Policy Oracle Chat</h2> <div className="flex flex-col sm:flex-row gap-4 items-center"> <label htmlFor="contextSelector" className="text-sm font-medium text-gray-300 whitespace-nowrap">Discussing:</label> <select id="contextSelector" value={selectedContextId} onChange={(e) => handleContextChange(e.target.value)} disabled={!consentGiven || isLoading || availableContexts.length === 0} className={`flex-grow p-2.5 bg-gray-700 border border-gray-600 rounded-md outline-none text-gray-200 ${focusRingClasses} focus:border-transparent disabled:opacity-60`} > <option value="" disabled>{availableContexts.length === 0 ? "No documents available" : "Select a Policy or Document..."}</option> {availableContexts.map(ctx => ( <option key={ctx.id} value={ctx.id}> {ctx.name} ({ctx.type === 'policy' ? 'Policy' : 'Document'}) </option> ))} </select> </div> </div> <div className="flex-grow p-6 space-y-4 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-600 scrollbar-track-gray-700"> {messages.map(message => ( <div key={message.id} className={`flex ${message.sender === 'user' ? 'justify-end' : 'justify-start'}`}> <div className={`max-w-xs lg:max-w-md px-4 py-3 rounded-xl shadow ${ message.sender === 'user' ? 'bg-[#0057e7] text-white rounded-br-none' : 'bg-gray-700 text-gray-200 rounded-bl-none' }`} > <p className="text-sm whitespace-pre-wrap">{message.text}</p> </div> </div> ))} {isLoading && messages.length > 0 && messages[messages.length-1].sender === 'user' && ( <div className="flex justify-start"> <div className="max-w-xs lg:max-w-md px-4 py-3 rounded-xl shadow bg-gray-700 text-gray-200 rounded-bl-none"> <div className="flex items-center"> <div className="animate-pulse flex space-x-1"> <div className="w-1.5 h-1.5 bg-gray-400 rounded-full"></div> <div className="w-1.5 h-1.5 bg-gray-400 rounded-full animation-delay-200"></div> <div className="w-1.5 h-1.5 bg-gray-400 rounded-full animation-delay-400"></div> </div> <span className="text-sm ml-2">Assistant is typing...</span> </div> </div> </div> )} <div ref={messagesEndRef} /> </div> {consentGiven && selectedContextId && messages.length <= 2 && availableContexts.find(c => c.id === selectedContextId) && ( <div className="p-4 border-t border-gray-700"> <p className="text-xs text-gray-400 mb-2 text-center">Or try asking:</p> <div className="flex flex-wrap justify-center gap-2"> {suggestedQuestions.slice(0,3).map(q => ( <button key={q} onClick={() => handleSendMessage(null, q)} disabled={isLoading} className={`px-3 py-1.5 text-xs rounded-full bg-gray-600 hover:bg-gray-500 text-gray-200 transition-colors ${focusRingClasses} disabled:opacity-60`} > {q} </button> ))} </div> </div> )} <form onSubmit={handleSendMessage} className="p-4 border-t border-gray-700"> <div className="flex items-center space-x-2"> <input type="text" value={inputValue} onChange={(e) => setInputValue(e.target.value)} placeholder={!consentGiven ? "Please grant consent to chat" : isLoading ? "Assistant is typing..." : !selectedContextId ? "Select a document to start chatting" : "Ask a question about your policy..."} className={`flex-grow p-3 bg-gray-700 border border-gray-600 rounded-lg outline-none text-gray-200 placeholder-gray-400 ${focusRingClasses} focus:border-transparent`} disabled={isLoading || !consentGiven || !selectedContextId} /> <button type="submit" disabled={isLoading || inputValue.trim() === '' || !consentGiven || !selectedContextId} className={`inline-flex items-center justify-center gap-2 px-6 py-3 rounded-md text-white bg-gradient-to-r from-[#0057e7] to-[#00e5ff] transition transform-gpu hover:scale-[1.02] active:scale-95 disabled:opacity-50 ${focusRingClasses}`} > Send </button> </div> </form> </div> ); };
+
+
+// PropertyTab Component
+const PropertyTab = ({ glassPanelClasses, focusRingClasses }) => {
+    const [currentView, setCurrentView] = useState('list');
+    const [selectedProperty, setSelectedProperty] = useState(null);
+    const [properties, setProperties] = useState([]);
+    const [isLoading, setIsLoading] = useState(true);
+
+    const fetchProperties = async () => {
+        setIsLoading(true);
+        const { data, error } = await supabase.from('properties').select();
+        if (error) {
+            console.error("Error fetching properties:", error);
+        } else {
+            setProperties(data || []);
+        }
+        setIsLoading(false);
+    };
+
+    useEffect(() => {
+        fetchProperties();
+    }, []);
+
+    const handleViewDetail = (property) => {
+        setSelectedProperty(property);
+        setCurrentView('detail');
+    };
+
+    const handleAddNewProperty = () => {
+        setSelectedProperty(null);
+        setCurrentView('form');
+    };
+
+    const handleFormSubmit = async (submittedFormData) => {
+        setIsLoading(true);
+        // This is where the new property data is transformed and sent to the (mock) backend.
+        // The structure of submittedFormData comes from the new PropertyForm.
+        console.log("Property form submitted in PropertyTab:", submittedFormData);
+
+        const newPropertyRecord = {
+            name: submittedFormData.nickname,
+            address: submittedFormData.fullAddress || 'N/A',
+            county: submittedFormData.county || null,
+            description: submittedFormData.description || null,
+            category_key: submittedFormData.category, // e.g., 'real_estate'
+            // Dynamically add category-specific details
+            // These are now nested under `categoryDetails` in the form
+            ...(submittedFormData.categoryDetails || {}),
+            // Mock image_url based on category or a placeholder
+            image_url: `https://placehold.co/600x400/1f2937/4a5568?text=${encodeURIComponent(submittedFormData.nickname)}`,
+            created_at: new Date().toISOString(),
+            // Mock value, latitude, longitude for now
+            value: Math.floor(Math.random() * 1000000),
+            latitude: (Math.random() * 180 - 90).toFixed(4),
+            longitude: (Math.random() * 360 - 180).toFixed(4),
+        };
+         // Construct a user-friendly 'type' string for display
+        const categoryLabel = propertyCategoryConfig[submittedFormData.category]?.label || 'Unknown Category';
+        let specificType = '';
+        if (submittedFormData.category === 'real_estate') specificType = submittedFormData.categoryDetails?.propertyType;
+        else if (submittedFormData.category === 'vehicle') specificType = `${submittedFormData.categoryDetails?.year} ${submittedFormData.categoryDetails?.make} ${submittedFormData.categoryDetails?.model}`;
+        // Add more specific type constructions for other categories if needed
+        newPropertyRecord.type = `${categoryLabel}${specificType ? ` - ${specificType}` : ''}`;
+
+
+        // Mock insert into 'properties' table
+        const { data: propertyInsertData, error: propertyInsertError } = await supabase.from('properties').insert([newPropertyRecord]);
+
+        if (propertyInsertError) {
+            console.error("Error inserting property:", propertyInsertError);
+            alert(`Error adding property: ${propertyInsertError.message}`);
+            setIsLoading(false);
+            return;
+        }
+
+        const newPropertyId = propertyInsertData[0].id; // Get ID of the newly inserted property
+
+        // If insurance policies were added, insert them into 'policy_data'
+        // and link them in a join table (e.g., 'property_insurance_policies')
+        if (submittedFormData.isInsured === 'yes' && submittedFormData.insurancePolicies) {
+            const policyRecordsToInsert = [];
+            for (const policy of submittedFormData.insurancePolicies) {
+                if (policy.carrier && policy.policyNumber && policy.policyDocument) { // Ensure required fields are present
+                    // Mock policy document upload
+                    let documentUrl = 'mock_path/default_policy.pdf';
+                    if (policy.policyDocument instanceof File) {
+                         const { data: storageData, error: storageError } = await supabase.storage
+                            .from('policy_documents') // ensure this bucket exists in your Supabase storage
+                            .upload(`property_${newPropertyId}/${policy.coverageType}_${policy.policyDocument.name}`, policy.policyDocument);
+                        if (storageError) {
+                            console.warn(`Could not upload policy document for ${policy.coverageType}: ${storageError.message}`);
+                        } else {
+                            documentUrl = storageData.path;
+                        }
+                    }
+
+                    policyRecordsToInsert.push({
+                        name: `${policy.coverageType} for ${submittedFormData.nickname}`,
+                        type: 'policy',
+                        policy_number: policy.policyNumber,
+                        carrier: policy.carrier,
+                        property_id: newPropertyId, // Link to the new property
+                        property_name: submittedFormData.nickname,
+                        premium: parseFloat(policy.premium) || 0, // Assuming premium is part of the mini-form
+                        renewal_date: policy.expirationDate || new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+                        effective_date: policy.effectiveDate || new Date().toISOString().split('T')[0],
+                        status: 'Active', // Default status
+                        coverage_types: [policy.coverageType],
+                        processed_text: `Policy details for ${policy.coverageType} - Carrier: ${policy.carrier}, Policy #: ${policy.policyNumber}. Document: ${documentUrl}`,
+                        document_url: documentUrl,
+                        category_key: submittedFormData.category, // Store the main property category
+                    });
+                }
+            }
+            if (policyRecordsToInsert.length > 0) {
+                const { error: policyInsertError } = await supabase.from('policy_data').insert(policyRecordsToInsert);
+                if (policyInsertError) {
+                    console.error("Error inserting linked policies:", policyInsertError);
+                    // Potentially handle partial success/failure here
+                }
+            }
+        }
+        await fetchProperties(); // Re-fetch all properties to include the new one
+        setCurrentView('list');
+        setIsLoading(false);
+    };
+
+
+    if (isLoading) {
+        return <div className={`${glassPanelClasses} p-8 text-center`}><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#0057e7] mx-auto"></div><p className="mt-4">Loading properties...</p></div>;
+    }
+
+    return (
+        <div>
+            {currentView === 'list' && (
+                <PropertyList
+                    properties={properties}
+                    onViewDetail={handleViewDetail}
+                    onAddNew={handleAddNewProperty}
+                    glassPanelClasses={glassPanelClasses}
+                    focusRingClasses={focusRingClasses}
+                />
+            )}
+            {currentView === 'detail' && selectedProperty && (
+                <PropertyDetail
+                    property={selectedProperty}
+                    onBack={() => setCurrentView('list')}
+                    glassPanelClasses={glassPanelClasses}
+                    focusRingClasses={focusRingClasses}
+                />
+            )}
+            {currentView === 'form' && (
+                <PropertyForm
+                    onCancel={() => setCurrentView('list')}
+                    onSubmit={handleFormSubmit}
+                    glassPanelClasses={glassPanelClasses}
+                    focusRingClasses={focusRingClasses}
+                />
+            )}
+        </div>
+    );
 };
 
 // Property List View
 const PropertyList = ({ properties, onViewDetail, onAddNew, glassPanelClasses, focusRingClasses }) => {
     const [searchTerm, setSearchTerm] = useState('');
-
-    // Placeholder states/handlers for sort/filter/map view (implement logic later)
     const handleFilter = () => alert("Filter functionality not yet implemented.");
     const handleSort = () => alert("Sort functionality not yet implemented.");
     const handleMapView = () => alert("Map View functionality not yet implemented.");
 
-    const filteredProperties = properties.filter(prop => 
-        prop.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        prop.address.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        prop.type.toLowerCase().includes(searchTerm.toLowerCase())
+    const filteredProperties = properties.filter(prop =>
+        (prop.name && prop.name.toLowerCase().includes(searchTerm.toLowerCase())) ||
+        (prop.address && prop.address.toLowerCase().includes(searchTerm.toLowerCase())) ||
+        (prop.type && prop.type.toLowerCase().includes(searchTerm.toLowerCase()))
     );
-
-    // Button style from global guide (.btn-secondary equivalent)
     const secondaryButtonClasses = `inline-flex items-center gap-2 px-4 py-2 rounded-md bg-gray-700 text-gray-100 hover:bg-gray-600 transition-colors ${focusRingClasses}`;
 
     return (
         <div className="space-y-6">
-            <div className={`${glassPanelClasses} p-4 md:p-6 flex flex-col md:flex-row justify-end items-center gap-4`}> 
+            <div className={`${glassPanelClasses} p-4 md:p-6 flex flex-col md:flex-row justify-between items-center gap-4`}>
+                 <h2 className="text-xl font-semibold text-gray-100 w-full md:w-auto text-center md:text-left">Your Properties</h2>
                 <div className="flex flex-wrap items-center gap-2 md:gap-4 w-full md:w-auto justify-center md:justify-end">
-                    {/* Search Input */}
                     <div className="relative flex-grow md:flex-grow-0 w-full sm:w-auto max-w-xs">
-                        <input
-                            type="text"
-                            placeholder="Search properties..."
-                            value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
-                            className={`w-full p-2 pr-8 bg-gray-700 border border-gray-600 rounded-md outline-none text-gray-200 placeholder-gray-400 ${focusRingClasses} focus:border-transparent`}
-                        />
+                        <input type="text" placeholder="Search properties..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className={`w-full p-2 pr-8 bg-gray-700 border border-gray-600 rounded-md outline-none text-gray-200 placeholder-gray-400 ${focusRingClasses} focus:border-transparent`} />
                         <Search size={18} className="absolute right-2.5 top-1/2 transform -translate-y-1/2 text-gray-400 pointer-events-none" />
                     </div>
-                    {/* Filter Button */}
-                    <button onClick={handleFilter} className={secondaryButtonClasses}>
-                        <Filter size={16} /> Filter
-                    </button>
-                    {/* Sort Button */}
-                    <button onClick={handleSort} className={secondaryButtonClasses}>
-                        <ArrowUpDown size={16} /> Sort
-                    </button>
-                    {/* Map View Button */}
-                    <button onClick={handleMapView} className={secondaryButtonClasses}>
-                        <Map size={16} /> Map View
-                    </button>
-                    {/* Add New Button */}
-                    <button
-                        onClick={onAddNew}
-                        className={`inline-flex items-center justify-center gap-2 px-4 py-2 rounded-md text-white bg-gradient-to-r from-[#0057e7] to-[#00e5ff] transition transform-gpu hover:scale-[1.02] active:scale-95 ${focusRingClasses}`}
-                    >
+                    <button onClick={handleFilter} className={secondaryButtonClasses}><Filter size={16} /> Filter</button>
+                    <button onClick={handleSort} className={secondaryButtonClasses}><ArrowUpDown size={16} /> Sort</button>
+                    <button onClick={handleMapView} className={secondaryButtonClasses}><Map size={16} /> Map View</button>
+                    <button onClick={onAddNew} className={`inline-flex items-center justify-center gap-2 px-4 py-2 rounded-md text-white bg-gradient-to-r from-[#0057e7] to-[#00e5ff] transition transform-gpu hover:scale-[1.02] active:scale-95 ${focusRingClasses}`} >
                         <PlusCircle size={18} /> Add Property
                     </button>
                 </div>
             </div>
-
-            {/* Placeholder for Map Visualization */}
             <div className={`${glassPanelClasses} p-6 text-center`}>
                 <MapPin size={48} className="mx-auto text-[#0057e7] mb-2" />
                 <h3 className="text-xl font-semibold text-gray-100">Property Locations Overview</h3>
-                <p className="text-gray-400 text-sm mt-2">
-                    (Map visualization of all property locations will be displayed here. This requires Google Maps API integration.)
-                </p>
-                <div className="mt-4 h-64 bg-gray-700 rounded-md flex items-center justify-center text-gray-500">
-                    [Map Placeholder]
-                </div>
+                <p className="text-gray-400 text-sm mt-2">(Map visualization of all property locations will be displayed here.)</p>
+                <div className="mt-4 h-64 bg-gray-700 rounded-md flex items-center justify-center text-gray-500">[Map Placeholder]</div>
             </div>
-            
             {filteredProperties.length > 0 ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {filteredProperties.map(prop => (
@@ -497,9 +793,7 @@ const PropertyList = ({ properties, onViewDetail, onAddNew, glassPanelClasses, f
                  <div className={`${glassPanelClasses} p-8 text-center`}>
                     <Building size={48} className="mx-auto text-gray-500 mb-4" />
                     <h3 className="text-xl font-semibold text-gray-100">No Properties Found</h3>
-                    <p className="text-gray-400 mt-2">
-                        {searchTerm ? "No properties match your search criteria." : "You haven't added any properties yet. Click 'Add New' to get started."}
-                    </p>
+                    <p className="text-gray-400 mt-2">{searchTerm ? "No properties match your search criteria." : "You haven't added any properties yet. Click 'Add Property' to get started."}</p>
                 </div>
             )}
         </div>
@@ -507,90 +801,188 @@ const PropertyList = ({ properties, onViewDetail, onAddNew, glassPanelClasses, f
 };
 
 // PropertyCard Component
-const PropertyCard = ({ property, onViewDetail, glassCardClasses, focusRingClasses }) => { return ( <div className={`${glassCardClasses} flex flex-col justify-between cursor-pointer hover:border-[#0057e7]/50 transition-all duration-300 group`} onClick={() => onViewDetail(property)}> <div> <img src={property.image_url || `https://placehold.co/600x400/1f2937/4a5568?text=${encodeURIComponent(property.name)}`} alt={property.name} className="w-full h-48 object-cover rounded-md mb-4" onError={(e) => e.target.src='https://placehold.co/600x400/1f2937/4a5568?text=Image+Error'}/> <h3 className="text-xl font-semibold text-gray-100 mb-1 group-hover:text-[#00e5ff] transition-colors">{property.name}</h3> <p className="text-sm text-gray-400 mb-1 flex items-center"><MapPin size={14} className="mr-1.5 flex-shrink-0" /> {property.address}</p> <p className="text-sm text-gray-500 mb-2">{property.type}</p> </div> <div className="mt-auto pt-3 border-t border-white/10"> <div className="flex justify-between items-center text-sm"> <span className="text-gray-400">Value: <span className="font-semibold text-gray-200">${property.value?.toLocaleString() || 'N/A'}</span></span> <button className={`text-xs text-[#0057e7] hover:text-[#00e5ff] font-semibold py-1 px-2 rounded-md group-hover:bg-gray-700 transition-colors ${focusRingClasses}`}> View Details <Eye size={14} className="inline ml-1" /> </button> </div> <p className="text-xs text-gray-500 mt-1">Added: {new Date(property.created_at).toLocaleDateString()}</p> </div> </div> ); };
-// PropertyDetail Component
-const PropertyDetail = ({ property, onBack, glassPanelClasses, focusRingClasses }) => { const [activeSubTab, setActiveSubTab] = useState('location'); const insurability = { rating: 'B+', issues: ['Minor flood zone proximity (Zone X shaded)', 'Roof older than 15 years'] }; const estimatedPremium = { amount: 1250, currency: 'USD' }; const documents = [ {id: 'doc1', name: 'Purchase Agreement.pdf', type: 'Agreement', date: '2024-01-10'}, {id: 'doc2', name: 'Inspection Report.pdf', type: 'Report', date: '2024-01-05'} ]; const clients = [ {id: 'client1', name: 'John & Jane Doe', role: 'Owner'} ]; const DetailTabButton = ({ label, tabName, icon: Icon }) => ( <button onClick={() => setActiveSubTab(tabName)} className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium rounded-t-md transition-colors ${focusRingClasses} ${activeSubTab === tabName ? 'bg-gray-700 text-[#00e5ff]' : 'text-gray-300 hover:bg-gray-600 hover:text-gray-100'}`} > <Icon size={16} /> {label} </button> ); return ( <div className={`${glassPanelClasses} p-0`}> <div className="p-6 flex justify-between items-center border-b border-white/10"> <h2 className="text-2xl font-semibold text-gray-100">{property.name}</h2> <button onClick={onBack} className={`inline-flex items-center gap-2 px-4 py-2 rounded-md bg-gray-700 text-gray-100 hover:bg-gray-600 transition-colors ${focusRingClasses}`}> <ChevronLeft size={20} /> Back to List </button> </div> <div className="p-6 grid grid-cols-1 lg:grid-cols-3 gap-6"> <div className="lg:col-span-1 space-y-6"> <img src={property.image_url || `https://placehold.co/600x400/1f2937/4a5568?text=${encodeURIComponent(property.name)}`} alt={property.name} className="w-full h-auto object-cover rounded-lg shadow-lg" onError={(e) => e.target.src='https://placehold.co/600x400/1f2937/4a5568?text=Image+Error'}/> <div className="bg-gray-700/50 p-4 rounded-lg space-y-2"> <h3 className="text-lg font-semibold text-gray-200 border-b border-gray-600 pb-2 mb-2">Key Information</h3> <p className="text-sm text-gray-300"><strong>Type:</strong> {property.type}</p> <p className="text-sm text-gray-300"><strong>Address:</strong> {property.address}</p> <p className="text-sm text-gray-300"><strong>Value:</strong> ${property.value?.toLocaleString() || 'N/A'}</p> {property.bedrooms && <p className="text-sm text-gray-300"><strong>Bedrooms:</strong> {property.bedrooms}</p>} {property.bathrooms && <p className="text-sm text-gray-300"><strong>Bathrooms:</strong> {property.bathrooms}</p>} {property.sqft && <p className="text-sm text-gray-300"><strong>SqFt:</strong> {property.sqft?.toLocaleString()}</p>} {property.make && <p className="text-sm text-gray-300"><strong>Make:</strong> {property.make}</p>} {property.model && <p className="text-sm text-gray-300"><strong>Model:</strong> {property.model}</p>} {property.year && <p className="text-sm text-gray-300"><strong>Year:</strong> {property.year}</p>} </div> </div> <div className="lg:col-span-2"> <div className="flex border-b border-gray-700 mb-0"> <DetailTabButton label="Location/Details" tabName="location" icon={Info} /> <DetailTabButton label="Map" tabName="map" icon={Map} /> <DetailTabButton label="Documents" tabName="documents" icon={FileDigit} /> <DetailTabButton label="Clients" tabName="clients" icon={Users} /> </div> <div className="py-6 bg-gray-800/30 rounded-b-lg min-h-[300px]"> {activeSubTab === 'location' && ( <div className="px-6 space-y-3"> <h4 className="text-lg font-semibold text-gray-200">Property Metrics</h4> <p className="text-sm text-gray-400">Detailed attributes and characteristics of the property.</p> </div> )} {activeSubTab === 'map' && ( <div className="px-6 text-center"> <h4 className="text-lg font-semibold text-gray-200 mb-2">Interactive Map & Street View</h4> <div className="h-64 bg-gray-700 rounded-md flex items-center justify-center text-gray-500 mb-4">[Google Maps Embed Placeholder for {property.address}]</div> <div className="h-40 bg-gray-700 rounded-md flex items-center justify-center text-gray-500">[Street View Placeholder]</div> <p className="text-xs text-gray-500 mt-2">Map integration requires Google Maps API setup.</p> <div className="mt-4 space-x-2"> <button className={`px-3 py-1.5 text-xs rounded-md bg-gray-600 text-gray-300 hover:bg-gray-500 ${focusRingClasses}`}>Nearby Schools (N/A)</button> <button className={`px-3 py-1.5 text-xs rounded-md bg-gray-600 text-gray-300 hover:bg-gray-500 ${focusRingClasses}`}>Restaurants (N/A)</button> </div> </div> )} {activeSubTab === 'documents' && ( <div className="px-6"> <h4 className="text-lg font-semibold text-gray-200 mb-3">Associated Documents</h4> {documents.length > 0 ? ( <ul className="space-y-2"> {documents.map(doc => ( <li key={doc.id} className="p-3 bg-gray-700/70 rounded-md flex justify-between items-center text-sm"> <div><FileText size={16} className="inline mr-2 text-[#00e5ff]" />{doc.name} <span className="text-xs text-gray-400">({doc.type})</span></div> <span className="text-xs text-gray-500">{doc.date}</span> </li> ))} </ul> ) : <p className="text-sm text-gray-400">No documents associated.</p>} </div> )} {activeSubTab === 'clients' && ( <div className="px-6"> <h4 className="text-lg font-semibold text-gray-200 mb-3">Associated Clients</h4> {clients.length > 0 ? ( <ul className="space-y-2"> {clients.map(client => ( <li key={client.id} className="p-3 bg-gray-700/70 rounded-md text-sm"> <Users size={16} className="inline mr-2 text-[#00e5ff]" />{client.name} <span className="text-xs text-gray-400">({client.role})</span> </li> ))} </ul> ) : <p className="text-sm text-gray-400">No clients associated.</p>} </div> )} </div> </div> </div> <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-6 border-t border-white/10"> <div className="bg-gray-700/50 p-4 rounded-lg"> <h3 className="text-lg font-semibold text-gray-200 mb-2 flex items-center"><ShieldAlert size={20} className="mr-2 text-[#f59e0b]" /> Insurability Assessment</h3> <p className="text-3xl font-bold text-[#10b981] mb-1">{insurability.rating} <span className="text-sm font-normal text-gray-400">(Mock Rating)</span></p> {insurability.issues.length > 0 && ( <ul className="list-disc list-inside text-sm text-yellow-400 space-y-1 mt-2"> {insurability.issues.map((issue, i) => <li key={i}>{issue}</li>)} </ul> )} </div> <div className="bg-gray-700/50 p-4 rounded-lg"> <h3 className="text-lg font-semibold text-gray-200 mb-2 flex items-center"><DollarSign size={20} className="mr-2 text-[#00e5ff]" /> Estimated Premium</h3> <p className="text-3xl font-bold text-gray-100 mb-1">${estimatedPremium.amount.toLocaleString()} <span className="text-sm font-normal text-gray-400">/ year (Mock)</span></p> <button className={`mt-3 w-full inline-flex items-center justify-center gap-2 px-4 py-2 rounded-md text-white bg-gradient-to-r from-[#0057e7] to-[#00e5ff] transition transform-gpu hover:scale-[1.02] active:scale-95 ${focusRingClasses}`}> Request Formal Quote </button> </div> </div> </div> ); };
+const PropertyCard = ({ property, onViewDetail, glassCardClasses, focusRingClasses }) => { return ( <div className={`${glassCardClasses} flex flex-col justify-between cursor-pointer hover:border-[#0057e7]/50 transition-all duration-300 group p-5`} onClick={() => onViewDetail(property)}> <div> <img src={property.image_url || `https://placehold.co/600x400/1f2937/4a5568?text=${encodeURIComponent(property.name)}`} alt={property.name} className="w-full h-48 object-cover rounded-md mb-4" onError={(e) => e.target.src='https://placehold.co/600x400/1f2937/4a5568?text=Image+Error'}/> <h3 className="text-xl font-semibold text-gray-100 mb-1 group-hover:text-[#00e5ff] transition-colors">{property.name}</h3> <p className="text-sm text-gray-400 mb-1 flex items-center"><MapPin size={14} className="mr-1.5 flex-shrink-0" /> {property.address}</p> <p className="text-sm text-gray-500 mb-2">{property.type}</p> </div> <div className="mt-auto pt-3 border-t border-white/10"> <div className="flex justify-between items-center text-sm"> <span className="text-gray-400">Value: <span className="font-semibold text-gray-200">${property.value?.toLocaleString() || 'N/A'}</span></span> <button className={`text-xs text-[#0057e7] hover:text-[#00e5ff] font-semibold py-1 px-2 rounded-md group-hover:bg-gray-700 transition-colors ${focusRingClasses}`}> View Details <Eye size={14} className="inline ml-1" /> </button> </div> <p className="text-xs text-gray-500 mt-1">Added: {new Date(property.created_at).toLocaleDateString()}</p> </div> </div> ); };
 
-// PropertyForm Component - REVISED based on detailed spec
+// PropertyDetail Component
+const PropertyDetail = ({ property, onBack, glassPanelClasses, focusRingClasses }) => { const [activeSubTab, setActiveSubTab] = useState('location'); const insurability = { rating: 'B+', issues: ['Minor flood zone proximity (Zone X shaded)', 'Roof older than 15 years'] }; const estimatedPremium = { amount: 1250, currency: 'USD' }; const documents = [ {id: 'doc1', name: 'Purchase Agreement.pdf', type: 'Agreement', date: '2024-01-10'}, {id: 'doc2', name: 'Inspection Report.pdf', type: 'Report', date: '2024-01-05'} ]; const clients = [ {id: 'client1', name: 'John & Jane Doe', role: 'Owner'} ]; const DetailTabButton = ({ label, tabName, icon: Icon }) => ( <button onClick={() => setActiveSubTab(tabName)} className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium rounded-t-md transition-colors ${focusRingClasses} ${activeSubTab === tabName ? 'bg-gray-700 text-[#00e5ff]' : 'text-gray-300 hover:bg-gray-600 hover:text-gray-100'}`} > <Icon size={16} /> {label} </button> ); return ( <div className={`${glassPanelClasses} p-0`}> <div className="p-6 flex justify-between items-center border-b border-white/10"> <h2 className="text-2xl font-semibold text-gray-100">{property.name}</h2> <button onClick={onBack} className={`inline-flex items-center gap-2 px-4 py-2 rounded-md bg-gray-700 text-gray-100 hover:bg-gray-600 transition-colors ${focusRingClasses}`}> <ChevronLeft size={20} /> Back to List </button> </div> <div className="p-6 grid grid-cols-1 lg:grid-cols-3 gap-6"> <div className="lg:col-span-1 space-y-6"> <img src={property.image_url || `https://placehold.co/600x400/1f2937/4a5568?text=${encodeURIComponent(property.name)}`} alt={property.name} className="w-full h-auto object-cover rounded-lg shadow-lg" onError={(e) => e.target.src='https://placehold.co/600x400/1f2937/4a5568?text=Image+Error'}/> <div className="bg-gray-700/50 p-4 rounded-lg space-y-2"> <h3 className="text-lg font-semibold text-gray-200 border-b border-gray-600 pb-2 mb-2">Key Information</h3> <p className="text-sm text-gray-300"><strong>Type:</strong> {property.type}</p> <p className="text-sm text-gray-300"><strong>Address:</strong> {property.address}</p> <p className="text-sm text-gray-300"><strong>Value:</strong> ${property.value?.toLocaleString() || 'N/A'}</p> {property.bedrooms && <p className="text-sm text-gray-300"><strong>Bedrooms:</strong> {property.bedrooms}</p>} {property.bathrooms && <p className="text-sm text-gray-300"><strong>Bathrooms:</strong> {property.bathrooms}</p>} {property.sqft && <p className="text-sm text-gray-300"><strong>SqFt:</strong> {property.sqft?.toLocaleString()}</p>} {property.make && <p className="text-sm text-gray-300"><strong>Make:</strong> {property.make}</p>} {property.model && <p className="text-sm text-gray-300"><strong>Model:</strong> {property.model}</p>} {property.year && <p className="text-sm text-gray-300"><strong>Year:</strong> {property.year}</p>} </div> </div> <div className="lg:col-span-2"> <div className="flex border-b border-gray-700 mb-0"> <DetailTabButton label="Location/Details" tabName="location" icon={Info} /> <DetailTabButton label="Map" tabName="map" icon={Map} /> <DetailTabButton label="Documents" tabName="documents" icon={FileDigit} /> <DetailTabButton label="Clients" tabName="clients" icon={Users} /> </div> <div className="py-6 bg-gray-800/30 rounded-b-lg min-h-[300px]"> {activeSubTab === 'location' && ( <div className="px-6 space-y-3"> <h4 className="text-lg font-semibold text-gray-200">Property Metrics</h4> <p className="text-sm text-gray-400">Detailed attributes and characteristics of the property.</p> {property.lot_size && <p className="text-sm text-gray-300"><strong>Lot Size:</strong> {property.lot_size} acres</p>} {property.year_built && <p className="text-sm text-gray-300"><strong>Year Built:</strong> {property.year_built}</p>} {property.vin && <p className="text-sm text-gray-300"><strong>VIN:</strong> {property.vin}</p>} {property.county && <p className="text-sm text-gray-300"><strong>County:</strong> {property.county}</p>} {property.description && <p className="text-sm text-gray-300"><strong>Description:</strong> {property.description}</p>} </div> )} {activeSubTab === 'map' && ( <div className="px-6 text-center"> <h4 className="text-lg font-semibold text-gray-200 mb-2">Interactive Map & Street View</h4> <div className="h-64 bg-gray-700 rounded-md flex items-center justify-center text-gray-500 mb-4">[Google Maps Embed Placeholder for {property.address}]</div> <div className="h-40 bg-gray-700 rounded-md flex items-center justify-center text-gray-500">[Street View Placeholder]</div> <p className="text-xs text-gray-500 mt-2">Map integration requires Google Maps API setup.</p> <div className="mt-4 space-x-2"> <button className={`px-3 py-1.5 text-xs rounded-md bg-gray-600 text-gray-300 hover:bg-gray-500 ${focusRingClasses}`}>Nearby Schools (N/A)</button> <button className={`px-3 py-1.5 text-xs rounded-md bg-gray-600 text-gray-300 hover:bg-gray-500 ${focusRingClasses}`}>Restaurants (N/A)</button> </div> </div> )} {activeSubTab === 'documents' && ( <div className="px-6"> <h4 className="text-lg font-semibold text-gray-200 mb-3">Associated Documents</h4> {documents.length > 0 ? ( <ul className="space-y-2"> {documents.map(doc => ( <li key={doc.id} className="p-3 bg-gray-700/70 rounded-md flex justify-between items-center text-sm"> <div><FileText size={16} className="inline mr-2 text-[#00e5ff]" />{doc.name} <span className="text-xs text-gray-400">({doc.type})</span></div> <span className="text-xs text-gray-500">{doc.date}</span> </li> ))} </ul> ) : <p className="text-sm text-gray-400">No documents associated.</p>} </div> )} {activeSubTab === 'clients' && ( <div className="px-6"> <h4 className="text-lg font-semibold text-gray-200 mb-3">Associated Clients</h4> {clients.length > 0 ? ( <ul className="space-y-2"> {clients.map(client => ( <li key={client.id} className="p-3 bg-gray-700/70 rounded-md text-sm"> <Users size={16} className="inline mr-2 text-[#00e5ff]" />{client.name} <span className="text-xs text-gray-400">({client.role})</span> </li> ))} </ul> ) : <p className="text-sm text-gray-400">No clients associated.</p>} </div> )} </div> </div> </div> <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-6 border-t border-white/10"> <div className="bg-gray-700/50 p-4 rounded-lg"> <h3 className="text-lg font-semibold text-gray-200 mb-2 flex items-center"><ShieldAlert size={20} className="mr-2 text-[#f59e0b]" /> Insurability Assessment</h3> <p className="text-3xl font-bold text-[#10b981] mb-1">{insurability.rating} <span className="text-sm font-normal text-gray-400">(Mock Rating)</span></p> {insurability.issues.length > 0 && ( <ul className="list-disc list-inside text-sm text-yellow-400 space-y-1 mt-2"> {insurability.issues.map((issue, i) => <li key={i}>{issue}</li>)} </ul> )} </div> <div className="bg-gray-700/50 p-4 rounded-lg"> <h3 className="text-lg font-semibold text-gray-200 mb-2 flex items-center"><DollarSign size={20} className="mr-2 text-[#00e5ff]" /> Estimated Premium</h3> <p className="text-3xl font-bold text-gray-100 mb-1">${estimatedPremium.amount.toLocaleString()} <span className="text-sm font-normal text-gray-400">/ year (Mock)</span></p> <button className={`mt-3 w-full inline-flex items-center justify-center gap-2 px-4 py-2 rounded-md text-white bg-gradient-to-r from-[#0057e7] to-[#00e5ff] transition transform-gpu hover:scale-[1.02] active:scale-95 ${focusRingClasses}`}> Request Formal Quote </button> </div> </div> </div> ); };
+
+// Configuration for Property Form Categories and their specific fields/insurance types
+const propertyCategoryConfig = {
+    real_estate: {
+        label: "Real Estate",
+        icon: Building,
+        step1Fields: [
+            { name: 'propertyType', label: 'Property Type', type: 'select', options: ["Primary Residence", "Secondary/Vacation Home", "Investment Property", "Land"], required: true },
+            { name: 'yearBuilt', label: 'Year Built', type: 'number', placeholder: 'YYYY', orField: 'sqft' },
+            { name: 'sqft', label: 'Square Footage', type: 'number', placeholder: 'e.g., 1800', orField: 'yearBuilt' },
+        ],
+        insuranceCoverageTypes: ["Homeowners/Casualty", "Flood", "Earthquake", "Renters", "Wind/Hurricane"]
+    },
+    vehicle: {
+        label: "Vehicle",
+        icon: Car,
+        step1Fields: [
+            { name: 'year', label: 'Year', type: 'number', placeholder: 'YYYY', required: true },
+            { name: 'make', label: 'Make', type: 'text', placeholder: 'e.g., Toyota', required: true },
+            { name: 'model', label: 'Model', type: 'text', placeholder: 'e.g., Camry', required: true },
+            { name: 'vin', label: 'VIN', type: 'text', placeholder: 'Vehicle Identification Number', required: true },
+        ],
+        insuranceCoverageTypes: ["Auto Liability", "Collision/Comprehensive", "Classic/Collector", "GAP"]
+    },
+    watercraft: {
+        label: "Watercraft",
+        icon: Sailboat,
+        step1Fields: [
+            { name: 'year', label: 'Year', type: 'number', placeholder: 'YYYY', required: true },
+            { name: 'make', label: 'Make', type: 'text', placeholder: 'e.g., Sea Ray', required: true },
+            { name: 'model', label: 'Model', type: 'text', placeholder: 'e.g., SPX 190', required: true },
+            { name: 'hin', label: 'HIN (Hull ID)', type: 'text', placeholder: 'Hull Identification Number', required: true },
+        ],
+        insuranceCoverageTypes: ["Hull", "Liability", "Trailer"]
+    },
+    rec_vehicle: {
+        label: "Recreational Vehicle",
+        icon: Bike, // Placeholder, consider a more specific RV icon if available or use a generic one
+        step1Fields: [
+            { name: 'recVehicleType', label: 'Type', type: 'select', options: ["RV/Motorhome", "Travel Trailer", "ATV", "Snowmobile", "Other Powersport"], required: true },
+            { name: 'vinOrSerial', label: 'VIN / Serial #', type: 'text', placeholder: 'VIN or Serial Number', required: true },
+        ],
+        insuranceCoverageTypes: ["Motorhome", "Travel-Trailer", "Contents"]
+    },
+    valuables: {
+        label: "Valuables",
+        icon: Gem,
+        step1Fields: [
+            { name: 'itemCategory', label: 'Item Category', type: 'select', options: ["Jewelry", "Art", "Collectibles", "Electronics", "Firearms", "Other"], required: true },
+            { name: 'itemTitle', label: 'Item Title / Description', type: 'textarea', placeholder: 'e.g., Rolex Submariner Watch, 2021', required: true },
+        ],
+        insuranceCoverageTypes: ["Scheduled Personal Property", "Fine Art", "Jewelry", "Firearm"]
+    },
+};
+
+
+// PropertyForm Component - REVISED based on new multi-step spec
 const PropertyForm = ({ onCancel, onSubmit, glassPanelClasses, focusRingClasses }) => {
-    const [step, setStep] = useState(0); // Start at step 0 for category selection
-    const [maxStepVisited, setMaxStepVisited] = useState(0); // Track progress
+    const [step, setStep] = useState(0); // 0: Category, 1: Basics & Specifics, 2: Insurance
+    const [maxStepVisited, setMaxStepVisited] = useState(0);
     const [formData, setFormData] = useState({
-        category: '', // 'real_estate', 'vehicle', 'watercraft', 'rec_vehicle', 'valuables'
+        // Step 0
+        category: '',
+        // Step 1 - Basics
         nickname: '',
-        subType: '',
-        purchasePrice: '',
-        purchaseDate: '',
+        fullAddress: '', // Google Autocomplete or manual
+        county: '', // Auto-populated, editable
         description: '',
-        address: null, // Store address object/JSON
-        details: {}, // For category-specific fields (beds, baths, vin, make, etc.)
-        photos: [], // Array of file objects or URLs after upload
-        documents: [], // Array of file objects or URLs after upload
-        useStreetViewPhoto: false,
+        // Step 1 - Category Specifics (nested under categoryDetails)
+        categoryDetails: {},
+        // Step 2 - Insurance
+        isInsured: '', // 'yes' or 'no'
+        selectedCoverageTypes: {}, // e.g., { "Homeowners/Casualty": true, "Flood": false }
+        insurancePolicies: [], // Array of { coverageType, carrier, policyNumber, policyDocument (File object), effectiveDate, expirationDate, premium }
     });
 
-    // Define categories and their subtypes/fields (Mock data, replace with actual definitions)
-    const categories = {
-        real_estate: { label: "Real Estate", icon: Building, subTypes: ["Primary Residence", "Secondary/Vacation Home", "Investment Property", "Land"], specificFields: ['address', 'bedrooms', 'bathrooms', 'sqft', 'lot_size', 'year_built'] },
-        vehicle: { label: "Vehicle", icon: Car, subTypes: ["Sedan", "SUV", "Truck", "Motorcycle", "Van"], specificFields: ['garaging_address', 'make', 'model', 'year', 'vin'] },
-        watercraft: { label: "Watercraft", icon: Sailboat, subTypes: ["Boat", "Jet Ski", "Yacht"], specificFields: ['hull_id', 'make', 'model', 'year', 'length'] },
-        rec_vehicle: { label: "Recreational Vehicle", icon: Bike, subTypes: ["RV/Motorhome", "ATV", "Snowmobile", "Trailer"], specificFields: ['make', 'model', 'year', 'vin'] },
-        valuables: { label: "Valuables", icon: Gem, subTypes: ["Jewelry", "Art", "Collectibles", "Electronics"], specificFields: ['item_description', 'appraisal_value', 'appraisal_date'] },
-    };
+    const currentCategoryConfig = formData.category ? propertyCategoryConfig[formData.category] : null;
 
-    const commonFields = ['nickname', 'purchasePrice', 'purchaseDate', 'description'];
-    
-    // --- Validation (Placeholder) ---
-    // In a real app, use Zod schemas per step based on category
+    // Validation logic for each step
     const isStepValid = (currentStep) => {
-        if (currentStep === 0) return !!formData.category; // Must select category
-        if (currentStep === 1) return !!formData.nickname; // Nickname required for basics
-        if (currentStep === 2) {
-            // Add basic validation for category-specific required fields (e.g., address for real_estate, VIN for vehicle)
-            if (formData.category === 'real_estate' && !formData.address) return false;
-            if (formData.category === 'vehicle' && !formData.details.vin) return false;
-            // Add more checks as needed
-            return true; 
+        if (currentStep === 0) return !!formData.category;
+        if (currentStep === 1) {
+            if (!formData.nickname || !formData.fullAddress) return false;
+            // Validate category-specific required fields
+            if (currentCategoryConfig?.step1Fields) {
+                for (const field of currentCategoryConfig.step1Fields) {
+                    if (field.required && !formData.categoryDetails[field.name]) {
+                         // Handle 'orField' logic: if one of the 'or' fields is filled, it's valid
+                        if (field.orField && formData.categoryDetails[field.orField]) {
+                            continue;
+                        }
+                        return false;
+                    }
+                }
+            }
+            return true;
         }
-        if (currentStep === 3) return true; // Media step is optional for now
-        return false; 
+        if (currentStep === 2) {
+            if (formData.isInsured === 'no') return true;
+            if (formData.isInsured === 'yes') {
+                const selectedTypes = Object.keys(formData.selectedCoverageTypes).filter(type => formData.selectedCoverageTypes[type]);
+                if (selectedTypes.length === 0 && formData.insurancePolicies.length === 0) return true; // Allow proceeding if no coverage types selected yet
+
+                for (const policy of formData.insurancePolicies) {
+                    if (!policy.carrier || !policy.policyNumber || !policy.policyDocument) {
+                        return false; // All visible mini-forms must have these
+                    }
+                }
+            }
+            return true;
+        }
+        return false;
     };
 
     const handleCategorySelect = (categoryKey) => {
-        setFormData(prev => ({ 
-            ...prev, 
-            category: categoryKey, 
-            subType: '', // Reset subtype when category changes
-            details: {} // Reset details
+        setFormData(prev => ({
+            ...prev,
+            category: categoryKey,
+            categoryDetails: {}, // Reset specific details
+            isInsured: '', // Reset insurance info
+            selectedCoverageTypes: {},
+            insurancePolicies: []
         }));
-        setStep(1); // Auto-advance to next step
-        setMaxStepVisited(prev => Math.max(prev, 1));
+        // Do not auto-advance here; user clicks "Next" after selecting category
     };
 
     const handleChange = (e) => {
         const { name, value, type, checked } = e.target;
         const val = type === 'checkbox' ? checked : value;
-        
-        // Handle nested 'details' fields
-        if (name.startsWith('details.')) {
+
+        if (name.startsWith('categoryDetails.')) {
             const detailKey = name.split('.')[1];
-            setFormData(prev => ({ 
-                ...prev, 
-                details: { ...prev.details, [detailKey]: val } 
+            setFormData(prev => ({
+                ...prev,
+                categoryDetails: { ...prev.categoryDetails, [detailKey]: val }
             }));
-        } else {
+        } else if (name.startsWith('insurancePolicy_')) {
+            // For insurance mini-forms: name="insurancePolicy_Homeowners/Casualty_carrier"
+            const [_, coverageType, fieldKey] = name.split('_');
+            setFormData(prev => ({
+                ...prev,
+                insurancePolicies: prev.insurancePolicies.map(p =>
+                    p.coverageType === coverageType ? { ...p, [fieldKey]: val } : p
+                )
+            }));
+        }
+        else {
             setFormData(prev => ({ ...prev, [name]: val }));
         }
-        // Autosave logic could be triggered here (e.g., debounced call)
     };
-    
-    const handleFileChange = (e, fieldName) => {
-        // Mock file handling - store File objects temporarily
-        const files = Array.from(e.target.files);
-        setFormData(prev => ({ ...prev, [fieldName]: [...prev[fieldName], ...files] }));
-        // TODO: Implement actual upload logic (request presigned URLs, upload to S3)
-        console.log(`Files selected for ${fieldName}:`, files.map(f => f.name));
+
+    const handleCoverageTypeChange = (coverageType, isChecked) => {
+        setFormData(prev => {
+            const newSelectedCoverageTypes = { ...prev.selectedCoverageTypes, [coverageType]: isChecked };
+            let newInsurancePolicies = [...prev.insurancePolicies];
+
+            if (isChecked && !newInsurancePolicies.find(p => p.coverageType === coverageType)) {
+                // Add new policy entry if it doesn't exist
+                newInsurancePolicies.push({ coverageType, carrier: '', policyNumber: '', policyDocument: null, effectiveDate: '', expirationDate: '', premium: '' });
+            } else if (!isChecked) {
+                // Remove policy entry if unchecked (optional, or just keep data but don't require validation)
+                // For simplicity, we'll keep the data but validation will ignore it if unchecked.
+                // Or, to remove: newInsurancePolicies = newInsurancePolicies.filter(p => p.coverageType !== coverageType);
+            }
+            return { ...prev, selectedCoverageTypes: newSelectedCoverageTypes, insurancePolicies: newInsurancePolicies };
+        });
     };
+
+    const handlePolicyFileChange = (e, coverageType) => {
+        const file = e.target.files[0];
+        setFormData(prev => ({
+            ...prev,
+            insurancePolicies: prev.insurancePolicies.map(p =>
+                p.coverageType === coverageType ? { ...p, policyDocument: file } : p
+            )
+        }));
+    };
+
 
     const nextStep = () => {
         if (isStepValid(step)) {
@@ -598,61 +990,99 @@ const PropertyForm = ({ onCancel, onSubmit, glassPanelClasses, focusRingClasses 
             setStep(next);
             setMaxStepVisited(prev => Math.max(prev, next));
         } else {
-            // Optionally show validation errors
             alert("Please fill in all required fields for this step.");
         }
     };
     const prevStep = () => setStep(prev => Math.max(0, prev - 1));
-    
+
     const handleSubmit = (e) => {
         e.preventDefault();
-        if (!isStepValid(step)) {
-             alert("Please ensure all required fields are filled correctly.");
+        if (!isStepValid(step)) { // Validate the final step
+             alert("Please ensure all required fields are filled correctly, including all selected insurance policy details.");
              return;
         }
-        // Final validation (mock)
+        // Perform a full validation across all relevant steps before submitting
+        for (let i = 0; i <= step; i++) {
+            if (!isStepValid(i)) {
+                alert(`Please complete Step ${i + 1} correctly.`);
+                setStep(i); // Navigate to the invalid step
+                return;
+            }
+        }
         console.log("Final Form Data Submitted:", formData);
-        // TODO: Call actual Supabase insert/update function
-        onSubmit(formData); // Pass data to parent to add to list (mock)
+        onSubmit(formData);
     };
 
-    // Common input field styling
     const inputClasses = `w-full p-2.5 bg-gray-700 border border-gray-600 rounded-md outline-none text-gray-200 placeholder-gray-400 ${focusRingClasses} focus:border-transparent disabled:opacity-50`;
     const labelClasses = "block text-sm font-medium text-gray-300 mb-1.5";
+    const totalWizardSteps = 3; // Category selection is step 0, then 2 more steps
 
-    // Total steps including category selection
-    const totalSteps = 4; 
+    // Render dynamic fields for Step 1
+    const renderStep1CategoryFields = () => {
+        if (!currentCategoryConfig || !currentCategoryConfig.step1Fields) return null;
+        return currentCategoryConfig.step1Fields.map(field => (
+            <div key={field.name}>
+                <label htmlFor={`categoryDetails.${field.name}`} className={labelClasses}>
+                    {field.label} {field.required && <span className="text-red-500">*</span>}
+                    {field.orField && <span className="text-xs text-gray-400"> (or {propertyCategoryConfig[formData.category]?.step1Fields.find(f=>f.name === field.orField)?.label})</span>}
+                </label>
+                {field.type === 'select' ? (
+                    <select name={`categoryDetails.${field.name}`} id={`categoryDetails.${field.name}`} value={formData.categoryDetails[field.name] || ''} onChange={handleChange} className={inputClasses} required={field.required}>
+                        <option value="" disabled>Select {field.label.toLowerCase()}...</option>
+                        {field.options.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+                    </select>
+                ) : field.type === 'textarea' ? (
+                     <textarea name={`categoryDetails.${field.name}`} id={`categoryDetails.${field.name}`} value={formData.categoryDetails[field.name] || ''} onChange={handleChange} className={inputClasses} placeholder={field.placeholder} rows="3" required={field.required}></textarea>
+                ) : (
+                    <input type={field.type} name={`categoryDetails.${field.name}`} id={`categoryDetails.${field.name}`} value={formData.categoryDetails[field.name] || ''} onChange={handleChange} className={inputClasses} placeholder={field.placeholder} required={field.required && !(field.orField && formData.categoryDetails[field.orField])} />
+                )}
+            </div>
+        ));
+    };
+
+    // Render insurance mini-forms for Step 2
+    const renderInsuranceMiniForms = () => {
+        if (!currentCategoryConfig || formData.isInsured !== 'yes') return null;
+        return formData.insurancePolicies.filter(p => formData.selectedCoverageTypes[p.coverageType]).map((policy, index) => (
+            <div key={policy.coverageType} className="p-4 mt-4 border border-gray-600 rounded-lg bg-gray-800/50 space-y-3">
+                <h4 className="text-md font-semibold text-[#00e5ff]">{policy.coverageType} Policy</h4>
+                <div><label htmlFor={`insurancePolicy_${policy.coverageType}_carrier`} className={labelClasses}>Carrier <span className="text-red-500">*</span></label><input type="text" name={`insurancePolicy_${policy.coverageType}_carrier`} value={policy.carrier} onChange={handleChange} className={inputClasses} placeholder="e.g., State Farm" required /></div>
+                <div><label htmlFor={`insurancePolicy_${policy.coverageType}_policyNumber`} className={labelClasses}>Policy # <span className="text-red-500">*</span></label><input type="text" name={`insurancePolicy_${policy.coverageType}_policyNumber`} value={policy.policyNumber} onChange={handleChange} className={inputClasses} placeholder="e.g., ABC123456" required /></div>
+                <div><label htmlFor={`insurancePolicy_${policy.coverageType}_policyDocument`} className={labelClasses}>Policy Document (PDF) <span className="text-red-500">*</span></label><input type="file" name={`insurancePolicy_${policy.coverageType}_policyDocument`} accept=".pdf" onChange={(e) => handlePolicyFileChange(e, policy.coverageType)} className={`w-full text-sm text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-[#0057e7] file:text-white hover:file:bg-[#004abc] ${focusRingClasses}`} required={!policy.policyDocument} /> {policy.policyDocument && <span className="text-xs text-green-400 ml-2">{typeof policy.policyDocument === 'string' ? policy.policyDocument.split('/').pop() : policy.policyDocument.name} selected</span>}</div>
+                <div><label htmlFor={`insurancePolicy_${policy.coverageType}_premium`} className={labelClasses}>Annual Premium (Optional)</label><input type="number" name={`insurancePolicy_${policy.coverageType}_premium`} value={policy.premium} onChange={handleChange} className={inputClasses} placeholder="e.g., 1200" /></div>
+                <div className="grid grid-cols-2 gap-4">
+                    <div><label htmlFor={`insurancePolicy_${policy.coverageType}_effectiveDate`} className={labelClasses}>Effective Date (Optional)</label><input type="date" name={`insurancePolicy_${policy.coverageType}_effectiveDate`} value={policy.effectiveDate} onChange={handleChange} className={inputClasses} /></div>
+                    <div><label htmlFor={`insurancePolicy_${policy.coverageType}_expirationDate`} className={labelClasses}>Expiration Date (Optional)</label><input type="date" name={`insurancePolicy_${policy.coverageType}_expirationDate`} value={policy.expirationDate} onChange={handleChange} className={inputClasses} /></div>
+                </div>
+            </div>
+        ));
+    };
+
 
     return (
-        <div className={`${glassPanelClasses} p-8`}>
+        <div className={`${glassPanelClasses} p-6 md:p-8`}>
             <div className="flex justify-between items-center mb-6">
                 <h2 className="text-2xl font-semibold text-gray-100">
-                    {step === 0 ? "Select Property Category" : `Add New Property (Step ${step} of ${totalSteps-1})`} 
+                    {step === 0 ? "Select Property Category" : `Add New Property (Step ${step} of ${totalWizardSteps-1})`}
                 </h2>
-                <button onClick={onCancel} className={`inline-flex items-center gap-2 px-4 py-2 rounded-md bg-gray-700 text-gray-100 hover:bg-gray-600 transition-colors ${focusRingClasses}`}>
-                    Cancel
-                </button>
+                <button onClick={onCancel} className={`px-4 py-2 rounded-md bg-gray-700 text-gray-100 hover:bg-gray-600 transition-colors ${focusRingClasses}`}>Cancel</button>
             </div>
 
-            {/* Progress Bar - Adjusted for 0-based step */}
-            {step > 0 && (
-                <div className="w-full bg-gray-700 rounded-full h-2.5 mb-8">
-                    <div className="bg-[#0057e7] h-2.5 rounded-full transition-all duration-300" style={{ width: `${(step / (totalSteps -1)) * 100}%` }}></div>
-                </div>
-            )}
+            {/* Progress Bar */}
+            <div className="w-full bg-gray-700 rounded-full h-2.5 mb-8">
+                <div className="bg-[#0057e7] h-2.5 rounded-full transition-all duration-300" style={{ width: `${(step / (totalWizardSteps-1)) * 100}%` }}></div>
+            </div>
 
             <form onSubmit={handleSubmit} className="space-y-6">
                 {/* Step 0: Category Selection */}
                 {step === 0 && (
                     <section>
+                        <h3 className="text-xl font-semibold text-gray-200 mb-1">What type of property are you adding?</h3>
+                        <p className="text-sm text-gray-400 mb-4">This helps us tailor the next steps for you.</p>
                         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4">
-                            {Object.entries(categories).map(([key, { label, icon: Icon }]) => (
-                                <button
-                                    type="button"
-                                    key={key}
-                                    onClick={() => handleCategorySelect(key)}
-                                    className={`p-4 border rounded-lg flex flex-col items-center justify-center aspect-square transition-all duration-200 ${focusRingClasses} ${formData.category === key ? 'border-[#00e5ff] bg-[#0057e7]/20 ring-2 ring-[#00e5ff]' : 'border-gray-600 hover:border-gray-500 hover:bg-gray-700/50'}`}
-                                >
+                            {Object.entries(propertyCategoryConfig).map(([key, { label, icon: Icon }]) => (
+                                <button type="button" key={key} onClick={() => handleCategorySelect(key)}
+                                    className={`p-4 border rounded-lg flex flex-col items-center justify-center aspect-square transition-all duration-200 relative ${focusRingClasses} ${formData.category === key ? 'border-[#00e5ff] bg-[#0057e7]/20 ring-2 ring-[#00e5ff]' : 'border-gray-600 hover:border-gray-500 hover:bg-gray-700/50'}`}>
                                     <Icon size={32} className={`mb-2 ${formData.category === key ? 'text-[#00e5ff]' : 'text-gray-400'}`} />
                                     <span className={`text-sm font-medium ${formData.category === key ? 'text-white' : 'text-gray-300'}`}>{label}</span>
                                     {formData.category === key && <Check size={16} className="absolute top-2 right-2 text-[#00e5ff]" />}
@@ -662,107 +1092,404 @@ const PropertyForm = ({ onCancel, onSubmit, glassPanelClasses, focusRingClasses 
                     </section>
                 )}
 
-                {/* Step 1: Basics */}
+                {/* Step 1: Property Basics + Location & Category-Specific Essentials */}
                 {step === 1 && formData.category && (
-                    <section>
-                        <h3 className="text-xl font-semibold text-gray-200 mb-4">Property Basics</h3>
-                        <div> <label htmlFor="nickname" className={labelClasses}>Property Name / Nickname <span className="text-red-500">*</span></label> <input type="text" name="nickname" id="nickname" value={formData.nickname} onChange={handleChange} className={inputClasses} placeholder="e.g., My Sunnyvale Home" required /> </div>
-                        <div>
-                            <label htmlFor="categoryDisplay" className={labelClasses}>Category</label>
-                            <input type="text" name="categoryDisplay" id="categoryDisplay" value={categories[formData.category]?.label || ''} className={inputClasses} disabled />
-                        </div>
-                         {categories[formData.category]?.subTypes && (
-                             <div>
-                                <label htmlFor="subType" className={labelClasses}>{categories[formData.category].label} Type <span className="text-red-500">*</span></label>
-                                <select name="subType" id="subType" value={formData.subType} onChange={handleChange} className={inputClasses} required>
-                                    <option value="" disabled>Select a subtype...</option>
-                                    {categories[formData.category].subTypes.map(sub => <option key={sub} value={sub}>{sub}</option>)}
-                                </select>
-                             </div>
-                         )}
-                        <div> <label htmlFor="purchasePrice" className={labelClasses}>Purchase Price (Optional)</label> <input type="number" name="purchasePrice" id="purchasePrice" value={formData.purchasePrice} onChange={handleChange} className={inputClasses} placeholder="e.g., 750000" min="0" /> </div>
-                        <div> <label htmlFor="purchaseDate" className={labelClasses}>Purchase Date (Optional)</label> <input type="date" name="purchaseDate" id="purchaseDate" value={formData.purchaseDate} onChange={handleChange} className={inputClasses} max={new Date().toISOString().split("T")[0]}/> </div>
-                        <div> <label htmlFor="description" className={labelClasses}>Description (Optional)</label> <textarea name="description" id="description" value={formData.description} onChange={handleChange} rows="3" className={inputClasses} placeholder="Brief description or notes..."></textarea> </div>
+                    <section className="space-y-4">
+                        <h3 className="text-xl font-semibold text-gray-200 mb-1">Property Basics & Details</h3>
+                        <p className="text-sm text-gray-400 mb-4">Tell us about your {currentCategoryConfig?.label.toLowerCase()}. Fields marked with <span className="text-red-500">*</span> are required.</p>
+                        <div><label htmlFor="nickname" className={labelClasses}>Nickname <span className="text-red-500">*</span></label><input type="text" name="nickname" value={formData.nickname} onChange={handleChange} className={inputClasses} placeholder="e.g., My Sunnyvale Home" required /></div>
+                        <div><label htmlFor="fullAddress" className={labelClasses}>Full Address <span className="text-red-500">*</span></label><input type="text" name="fullAddress" value={formData.fullAddress} onChange={handleChange} className={inputClasses} placeholder="e.g., 123 Main St, Anytown, USA" required /><p className="text-xs text-gray-500 mt-1">Google Places Autocomplete to be integrated here for accuracy.</p></div>
+                        <div><label htmlFor="county" className={labelClasses}>County</label><input type="text" name="county" value={formData.county} onChange={handleChange} className={inputClasses} placeholder="e.g., Santa Clara (auto-filled soon)" /><p className="text-xs text-gray-500 mt-1">This will be auto-populated based on address soon.</p></div>
+                        <div><label htmlFor="description" className={labelClasses}>Description (Optional)</label><textarea name="description" value={formData.description} onChange={handleChange} rows="2" className={inputClasses} placeholder="Brief notes or description..."></textarea></div>
+                        <hr className="border-gray-700 my-6" />
+                        <h4 className="text-lg font-semibold text-gray-200">{currentCategoryConfig?.label} Specifics</h4>
+                        {renderStep1CategoryFields()}
                     </section>
                 )}
 
-                {/* Step 2: Category-Specific Details */}
+                {/* Step 2: Insurance Info & Document Upload */}
                 {step === 2 && formData.category && (
-                    <section>
-                        <h3 className="text-xl font-semibold text-gray-200 mb-4">{categories[formData.category]?.label} Details</h3>
-                        
-                        {/* Real Estate Specific Fields */}
-                        {formData.category === 'real_estate' && (
+                    <section className="space-y-4">
+                        <h3 className="text-xl font-semibold text-gray-200 mb-1">Insurance Information</h3>
+                        <p className="text-sm text-gray-400 mb-4">Is this {currentCategoryConfig?.label.toLowerCase()} currently insured?</p>
+                        <div className="flex items-center space-x-4 mb-4">
+                            <label className="flex items-center space-x-2 cursor-pointer"><input type="radio" name="isInsured" value="yes" checked={formData.isInsured === 'yes'} onChange={handleChange} className="form-radio h-4 w-4 text-[#0057e7] bg-gray-700 border-gray-600 focus:ring-[#00e5ff]" /><span>Yes</span></label>
+                            <label className="flex items-center space-x-2 cursor-pointer"><input type="radio" name="isInsured" value="no" checked={formData.isInsured === 'no'} onChange={handleChange} className="form-radio h-4 w-4 text-[#0057e7] bg-gray-700 border-gray-600 focus:ring-[#00e5ff]" /><span>No</span></label>
+                        </div>
+
+                        {formData.isInsured === 'yes' && currentCategoryConfig?.insuranceCoverageTypes && (
                             <>
-                                <div> <label htmlFor="address" className={labelClasses}>Full Address <span className="text-red-500">*</span></label> <input type="text" name="address" id="address" value={formData.address || ''} onChange={handleChange} className={inputClasses} placeholder="Search with Google Places Autocomplete..." required /> <p className="text-xs text-gray-500 mt-1">Google Places Autocomplete to be integrated here.</p> </div>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    <div> <label htmlFor="details.bedrooms" className={labelClasses}>Bedrooms</label> <input type="number" name="details.bedrooms" id="details.bedrooms" value={formData.details.bedrooms || ''} onChange={handleChange} className={inputClasses} min="0" /> </div>
-                                    <div> <label htmlFor="details.bathrooms" className={labelClasses}>Bathrooms</label> <input type="number" name="details.bathrooms" id="details.bathrooms" step="0.5" value={formData.details.bathrooms || ''} onChange={handleChange} className={inputClasses} min="0"/> </div>
-                                    <div> <label htmlFor="details.sqft" className={labelClasses}>Square Footage</label> <input type="number" name="details.sqft" id="details.sqft" value={formData.details.sqft || ''} onChange={handleChange} className={inputClasses} min="0"/> </div>
-                                    <div> <label htmlFor="details.lot_size" className={labelClasses}>Lot Size (Acres)</label> <input type="number" name="details.lot_size" id="details.lot_size" step="0.01" value={formData.details.lot_size || ''} onChange={handleChange} className={inputClasses} min="0"/> </div>
-                                    <div> <label htmlFor="details.year_built" className={labelClasses}>Year Built</label> <input type="number" name="details.year_built" id="details.year_built" value={formData.details.year_built || ''} onChange={handleChange} className={inputClasses} placeholder="YYYY" min="1800" max={new Date().getFullYear()} /> </div>
+                                <p className="text-sm text-gray-300 mb-2">Select applicable coverage types for this {currentCategoryConfig.label.toLowerCase()}:</p>
+                                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-4">
+                                    {currentCategoryConfig.insuranceCoverageTypes.map(type => (
+                                        <label key={type} className="flex items-center space-x-2 p-2.5 bg-gray-700/60 border border-gray-600 rounded-md hover:bg-gray-600/80 cursor-pointer has-[:checked]:bg-[#0057e7]/30 has-[:checked]:border-[#0057e7]">
+                                            <input type="checkbox" name={`coverageType_${type}`} checked={!!formData.selectedCoverageTypes[type]} onChange={(e) => handleCoverageTypeChange(type, e.target.checked)} className="form-checkbox h-4 w-4 text-[#0057e7] bg-gray-800 border-gray-500 rounded focus:ring-offset-gray-900 focus:ring-[#00e5ff]" />
+                                            <span className="text-sm text-gray-200">{type}</span>
+                                        </label>
+                                    ))}
                                 </div>
+                                {renderInsuranceMiniForms()}
                             </>
                         )}
-
-                        {/* Vehicle Specific Fields */}
-                        {formData.category === 'vehicle' && (
-                            <>
-                                <div> <label htmlFor="details.garaging_address" className={labelClasses}>Garaging Address (if different)</label> <input type="text" name="details.garaging_address" id="details.garaging_address" value={formData.details.garaging_address || ''} onChange={handleChange} className={inputClasses} placeholder="Leave blank if same as primary" /> </div>
-                                <div> <label htmlFor="details.make" className={labelClasses}>Make <span className="text-red-500">*</span></label> <input type="text" name="details.make" id="details.make" value={formData.details.make || ''} onChange={handleChange} className={inputClasses} required /> </div>
-                                <div> <label htmlFor="details.model" className={labelClasses}>Model <span className="text-red-500">*</span></label> <input type="text" name="details.model" id="details.model" value={formData.details.model || ''} onChange={handleChange} className={inputClasses} required /> </div>
-                                <div> <label htmlFor="details.year" className={labelClasses}>Year <span className="text-red-500">*</span></label> <input type="number" name="details.year" id="details.year" value={formData.details.year || ''} onChange={handleChange} className={inputClasses} placeholder="YYYY" required min="1900" max={new Date().getFullYear()+1}/> </div>
-                                <div> <label htmlFor="details.vin" className={labelClasses}>VIN <span className="text-red-500">*</span></label> <input type="text" name="details.vin" id="details.vin" value={formData.details.vin || ''} onChange={handleChange} className={inputClasses} required /> </div>
-                            </>
+                         {formData.isInsured === 'no' && (
+                            <p className="text-center text-gray-400 p-4 bg-gray-700/30 rounded-md">
+                                No problem. You can add insurance details later if needed.
+                            </p>
                         )}
-                        
-                        {/* Placeholder for other categories */}
-                         {(formData.category === 'watercraft' || formData.category === 'rec_vehicle' || formData.category === 'valuables') && (
-                            <p className="text-gray-400 text-center py-4">Specific fields for {categories[formData.category]?.label} will appear here.</p>
-                         )}
-                    </section>
-                )}
-
-                {/* Step 3: Media & Documents */}
-                {step === 3 && formData.category && (
-                    <section>
-                        <h3 className="text-xl font-semibold text-gray-200 mb-4">Media & Documents</h3>
-                        <div>
-                            <label htmlFor="photos" className={labelClasses}>Upload Photos</label>
-                            <input type="file" name="photos" id="photos" multiple accept="image/*" onChange={(e) => handleFileChange(e, 'photos')} className={`w-full text-sm text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-[#0057e7] file:text-white hover:file:bg-[#004abc] ${focusRingClasses}`} />
-                            {formData.category === 'real_estate' && formData.address && (
-                                <div className="mt-2 flex items-center">
-                                    <input type="checkbox" name="useStreetViewPhoto" id="useStreetViewPhoto" checked={formData.useStreetViewPhoto} onChange={handleChange} className={`h-4 w-4 rounded border-gray-500 text-[#0057e7] focus:ring-[#00e5ff] ${focusRingClasses}`} />
-                                    <label htmlFor="useStreetViewPhoto" className="ml-2 block text-sm text-gray-300">Use Google Street View as hero photo (if available)</label>
-                                </div>
-                            )}
-                            {/* Display mock uploaded photos */}
-                            {formData.photos.length > 0 && <div className="mt-2 text-xs text-gray-400">Files selected: {formData.photos.map(f => f.name).join(', ')}</div>}
-                        </div>
-                        <div>
-                            <label htmlFor="documents" className={labelClasses}>Upload Documents (e.g., Purchase Agreement, Title, Appraisal)</label>
-                            <input type="file" name="documents" id="documents" multiple accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.heic" onChange={(e) => handleFileChange(e, 'documents')} className={`w-full text-sm text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-[#0057e7] file:text-white hover:file:bg-[#004abc] ${focusRingClasses}`} />
-                             {formData.documents.length > 0 && <div className="mt-2 text-xs text-gray-400">Files selected: {formData.documents.map(f => f.name).join(', ')}</div>}
-                        </div>
                     </section>
                 )}
 
                 {/* Navigation Buttons */}
-                {step > 0 && ( // Don't show nav on category selection step
-                    <div className="flex justify-between items-center pt-6 border-t border-gray-700">
-                        <button type="button" onClick={onCancel} className={`px-6 py-2.5 rounded-md bg-gray-700 text-gray-100 hover:bg-gray-600 transition-colors ${focusRingClasses}`}> Cancel </button>
-                        <div>
-                            {step > 1 && ( <button type="button" onClick={prevStep} className={`px-6 py-2.5 rounded-md bg-gray-600 text-gray-200 hover:bg-gray-500 transition-colors mr-3 ${focusRingClasses}`}> <ChevronLeft size={18} className="inline mr-1" /> Previous </button> )}
-                            {step < (totalSteps - 1) && ( <button type="button" onClick={nextStep} disabled={!isStepValid(step)} className={`px-6 py-2.5 rounded-md text-white bg-gradient-to-r from-[#0057e7] to-[#00e5ff] transition transform-gpu hover:scale-[1.02] active:scale-95 disabled:opacity-50 ${focusRingClasses}`}> Next <ChevronRight size={18} className="inline ml-1" /> </button> )}
-                            {step === (totalSteps - 1) && ( <button type="submit" disabled={!isStepValid(step)} className={`px-6 py-2.5 rounded-md text-white bg-gradient-to-r from-[#10b981] to-[#00e5ff] transition transform-gpu hover:scale-[1.02] active:scale-95 disabled:opacity-50 ${focusRingClasses}`}> <FilePlus size={18} className="inline mr-1" /> Add Property </button> )}
-                        </div>
+                <div className="flex justify-between items-center pt-6 border-t border-gray-700">
+                    <button type="button" onClick={onCancel} className={`px-6 py-2.5 rounded-md bg-gray-700 text-gray-100 hover:bg-gray-600 transition-colors ${focusRingClasses}`}>Cancel</button>
+                    <div className="space-x-3">
+                        {step > 0 && (<button type="button" onClick={prevStep} className={`px-6 py-2.5 rounded-md bg-gray-600 text-gray-200 hover:bg-gray-500 transition-colors ${focusRingClasses}`}><ChevronLeft size={18} className="inline mr-1" /> Previous</button>)}
+                        {step < (totalWizardSteps - 1) && (<button type="button" onClick={nextStep} disabled={!isStepValid(step)} className={`px-6 py-2.5 rounded-md text-white bg-gradient-to-r from-[#0057e7] to-[#00e5ff] transition transform-gpu hover:scale-[1.02] active:scale-95 disabled:opacity-50 ${focusRingClasses}`}>Next <ChevronRight size={18} className="inline ml-1" /></button>)}
+                        {step === (totalWizardSteps - 1) && (<button type="submit" disabled={!isStepValid(step)} className={`px-6 py-2.5 rounded-md text-white bg-gradient-to-r from-[#10b981] to-[#00e5ff] transition transform-gpu hover:scale-[1.02] active:scale-95 disabled:opacity-50 ${focusRingClasses}`}><FilePlus size={18} className="inline mr-1" /> Finish & Add Property</button>)}
                     </div>
-                )}
+                </div>
             </form>
         </div>
     );
 };
 
 
+// PoliciesTab Component
+const PoliciesTab = ({ glassPanelClasses, focusRingClasses }) => {
+    const [policies, setPolicies] = useState([]);
+    const [isLoading, setIsLoading] = useState(true);
+    const [searchTerm, setSearchTerm] = useState('');
+    const [activeFilters, setActiveFilters] = useState({ category: null, status: null, carrier: null, renewalIn30Days: false });
+    const [showDetailsDrawer, setShowDetailsDrawer] = useState(false);
+    const [selectedPolicyForDetail, setSelectedPolicyForDetail] = useState(null);
+
+    // Mock data for filters - in a real app, these might come from the data or be predefined constants
+    const filterOptions = {
+        categories: ["All", "Real Estate", "Vehicle", "Watercraft", "Valuables"],
+        statuses: ["All", "Active", "Lapsed", "Draft", "Expiring Soon"],
+        carriers: ["All", "State Farm", "Geico", "Chubb", "Progressive", "Other"], // Populate with actual carriers from data
+    };
+
+
+    useEffect(() => {
+        const fetchPolicies = async () => {
+            setIsLoading(true);
+            // Assuming 'policy_data' table now holds all necessary fields as per PolicyCard needs
+            const { data, error } = await supabase.from('policy_data').select(`
+                id, name, policy_number, carrier, property_name, premium, renewal_date, status, category_key, coverage_types, document_url 
+            `);
+            if (error) {
+                console.error("Error fetching policies:", error);
+                setPolicies([]);
+            } else {
+                setPolicies(data || []);
+            }
+            setIsLoading(false);
+        };
+        fetchPolicies();
+    }, []);
+
+    const handleFilterChange = (filterType, value) => {
+        setActiveFilters(prev => ({ ...prev, [filterType]: value === "All" ? null : value }));
+    };
+    
+    const handleToggleRenewalFilter = () => {
+        setActiveFilters(prev => ({ ...prev, renewalIn30Days: !prev.renewalIn30Days }));
+    };
+
+    const filteredPolicies = policies.filter(policy => {
+        const thirtyDaysFromNow = new Date();
+        thirtyDaysFromNow.setDate(thirtyDaysFromNow.getDate() + 30);
+
+        return (
+            (activeFilters.category ? policy.category_key === activeFilters.category.toLowerCase().replace(' ', '_') : true) &&
+            (activeFilters.status ? policy.status.toLowerCase() === activeFilters.status.toLowerCase() : true) &&
+            (activeFilters.carrier ? policy.carrier === activeFilters.carrier : true) &&
+            (activeFilters.renewalIn30Days ? new Date(policy.renewal_date) <= thirtyDaysFromNow && new Date(policy.renewal_date) >= new Date() && policy.status === 'Active' : true) &&
+            (searchTerm ? (
+                policy.policy_number?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                policy.carrier?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                policy.property_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                policy.name?.toLowerCase().includes(searchTerm.toLowerCase())
+            ) : true)
+        );
+    });
+    
+    const handleAddPolicy = () => {
+        // This would typically open a multi-step wizard modal.
+        // For now, it can navigate to a dedicated upload page or show an alert.
+        alert("Policy Upload Wizard would open here. For now, use 'Upload Policy' or add via 'Properties' tab.");
+        // Example: setCurrentView('uploadWizard'); or navigate('/dashboard/policies/new');
+    };
+
+    const handleExport = (format) => {
+        alert(`Exporting policies as ${format}... (Not implemented)`);
+    };
+
+    const openPolicyDetails = (policy) => {
+        setSelectedPolicyForDetail(policy);
+        setShowDetailsDrawer(true);
+    };
+
+
+    // Mock Metrics
+    const activePoliciesCount = policies.filter(p => p.status === 'Active').length;
+    const totalPremium = policies.filter(p => p.status === 'Active').reduce((sum, p) => sum + (p.premium || 0), 0);
+    const avgPremium = activePoliciesCount > 0 ? Math.round(totalPremium / activePoliciesCount) : 0;
+    const expiringSoonCount = policies.filter(p => {
+        const renewal = new Date(p.renewal_date);
+        const now = new Date();
+        const ninetyDaysFromNow = new Date(now.setDate(now.getDate() + 90));
+        now.setDate(now.getDate() - 90); // Reset now for other calcs
+        return p.status === 'Active' && renewal <= ninetyDaysFromNow && renewal >= new Date();
+    }).length;
+    const aiGapWarningsCount = policies.reduce((count, p) => count + (p.gapFindings?.length || 0), 2); // Mocked
+
+    return (
+        <div className="space-y-6">
+            {/* A. Top Bar */}
+            <div className={`${glassPanelClasses} p-4 md:p-6 flex flex-col md:flex-row justify-between items-center gap-4`}>
+                <h2 className="text-2xl font-semibold text-gray-100">Policies</h2>
+                <div className="flex items-center gap-3 flex-wrap justify-center md:justify-end">
+                    <div className="relative">
+                        <input
+                            type="search"
+                            placeholder="Search policies..."
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                            className={`p-2.5 pr-10 bg-gray-700 border border-gray-600 rounded-md outline-none text-gray-200 placeholder-gray-400 ${focusRingClasses} focus:border-transparent w-full sm:w-auto`}
+                        />
+                        <Search size={18} className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                    </div>
+                    <button onClick={handleAddPolicy} className={`inline-flex items-center gap-2 px-4 py-2.5 rounded-md text-white bg-gradient-to-r from-[#0057e7] to-[#00e5ff] transition transform-gpu hover:scale-[1.02] active:scale-95 ${focusRingClasses}`}>
+                        <PlusCircle size={18} /> Add / Upload Policy
+                    </button>
+                    <button onClick={() => handleExport('CSV')} title="Export as CSV" className={`p-2.5 rounded-md bg-gray-700 text-gray-300 hover:bg-gray-600 hover:text-white transition-colors ${focusRingClasses}`}>
+                        <Download size={18} /> <span className="sr-only">Export CSV</span>
+                    </button>
+                </div>
+            </div>
+
+            {/* B. Filters Strip */}
+            <div className={`${glassPanelClasses} p-3 md:p-4 overflow-x-auto scrollbar-thin scrollbar-thumb-gray-600 scrollbar-track-gray-700`}>
+                <div className="flex items-center gap-2 md:gap-3 whitespace-nowrap">
+                    <span className="text-sm font-medium text-gray-300 mr-2">Filter by:</span>
+                    <select onChange={(e) => handleFilterChange('category', e.target.value)} value={activeFilters.category || "All"} className={`p-2 text-sm bg-gray-700 border border-gray-600 rounded-md text-gray-200 ${focusRingClasses}`}> {filterOptions.categories.map(opt => <option key={opt} value={opt === "All" ? "" : opt.toLowerCase().replace(' ', '_')}>{opt}</option>)} </select>
+                    <select onChange={(e) => handleFilterChange('status', e.target.value)} value={activeFilters.status || "All"} className={`p-2 text-sm bg-gray-700 border border-gray-600 rounded-md text-gray-200 ${focusRingClasses}`}> {filterOptions.statuses.map(opt => <option key={opt} value={opt === "All" ? "" : opt}>{opt}</option>)} </select>
+                    <select onChange={(e) => handleFilterChange('carrier', e.target.value)} value={activeFilters.carrier || "All"} className={`p-2 text-sm bg-gray-700 border border-gray-600 rounded-md text-gray-200 ${focusRingClasses}`}> {filterOptions.carriers.map(opt => <option key={opt} value={opt === "All" ? "" : opt}>{opt}</option>)} </select>
+                    <button onClick={handleToggleRenewalFilter} className={`p-2 text-sm rounded-md transition-colors ${focusRingClasses} ${activeFilters.renewalIn30Days ? 'bg-[#0057e7] text-white' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'}`}>Renewal ≤ 30 days</button>
+                </div>
+            </div>
+
+            {/* C. Metrics Widgets */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
+                <MetricWidget title="Active Policies" value={activePoliciesCount} icon={<ShieldCheck size={24} className="text-[#00e5ff]" />} />
+                <MetricWidget title="Avg. Premium/Yr" value={`$${avgPremium.toLocaleString()}`} icon={<DollarSign size={24} className="text-[#00e5ff]" />} />
+                <MetricWidget title="Expiring ≤ 90 Days" value={expiringSoonCount} icon={<AlertTriangle size={24} className="text-yellow-400" />} />
+                <MetricWidget title="AI Gap Warnings" value={aiGapWarningsCount} icon={<TrendingDown size={24} className="text-red-400" />} />
+            </div>
+
+            {/* D. Policy Cards Grid */}
+            {isLoading ? (
+                <div className={`${glassPanelClasses} p-8 text-center`}><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#0057e7] mx-auto"></div><p className="mt-4">Loading policies...</p></div>
+            ) : filteredPolicies.length > 0 ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                    {filteredPolicies.map(policy => (
+                        <PolicyCard key={policy.id} policy={policy} glassCardClasses={glassPanelClasses} focusRingClasses={focusRingClasses} onViewDetails={() => openPolicyDetails(policy)} />
+                    ))}
+                </div>
+            ) : (
+                <div className={`${glassPanelClasses} p-8 text-center`}>
+                    <FileSearch size={48} className="mx-auto text-gray-500 mb-4" />
+                    <h3 className="text-xl font-semibold text-gray-100">No Policies Found</h3>
+                    <p className="text-gray-400 mt-2">
+                        {searchTerm || Object.values(activeFilters).some(f => f) ? "No policies match your current search/filter criteria." : "You haven't added any policies yet. Click 'Add / Upload Policy' to get started."}
+                    </p>
+                </div>
+            )}
+             {/* E. Map Toggle (Placeholder) */}
+            <div className={`${glassPanelClasses} p-4 mt-6 text-center`}>
+                <button className={`px-4 py-2 rounded-md bg-gray-700 text-gray-300 hover:bg-gray-600 transition-colors ${focusRingClasses} inline-flex items-center gap-2`}>
+                    <Map size={18} /> Show Policies on Map (Coming Soon)
+                </button>
+            </div>
+
+            {/* F. Right Drawer / Details Pane (Placeholder) */}
+            {showDetailsDrawer && selectedPolicyForDetail && (
+                <PolicyDetailsDrawer
+                    policy={selectedPolicyForDetail}
+                    onClose={() => setShowDetailsDrawer(false)}
+                    glassPanelClasses={glassPanelClasses}
+                    focusRingClasses={focusRingClasses}
+                />
+            )}
+        </div>
+    );
+};
+
+// MetricWidget Component (for PoliciesTab)
+const MetricWidget = ({ title, value, icon, glassPanelClasses }) => (
+    <div className={`${glassPanelClasses || 'bg-gray-800/50'} p-5 rounded-lg shadow-md flex items-center space-x-4`}>
+        <div className="p-3 bg-gray-700 rounded-full">
+            {icon}
+        </div>
+        <div>
+            <p className="text-sm text-gray-400">{title}</p>
+            <p className="text-2xl font-semibold text-gray-100">{value}</p>
+        </div>
+    </div>
+);
+
+// PolicyCard Component (for PoliciesTab)
+const PolicyCard = ({ policy, glassCardClasses, focusRingClasses, onViewDetails }) => {
+    const getStatusColor = (status) => {
+        if (status === 'Active') return 'bg-green-500/30 text-green-300 border-green-500';
+        if (status === 'Lapsed') return 'bg-red-500/30 text-red-300 border-red-500';
+        if (status === 'Expiring Soon') return 'bg-yellow-500/30 text-yellow-300 border-yellow-500';
+        return 'bg-gray-500/30 text-gray-300 border-gray-500';
+    };
+
+    const renewalDate = new Date(policy.renewal_date);
+    const daysToRenewal = Math.ceil((renewalDate - new Date()) / (1000 * 60 * 60 * 24));
+    let renewalText = renewalDate.toLocaleDateString();
+    let renewalColor = "text-gray-400";
+
+    if (policy.status === 'Active') {
+        if (daysToRenewal <= 30 && daysToRenewal >= 0) {
+            renewalText = `Renews in ${daysToRenewal}d (${renewalDate.toLocaleDateString()})`;
+            renewalColor = "text-yellow-400 font-semibold";
+        } else if (daysToRenewal < 0) {
+            renewalText = `Expired on ${renewalDate.toLocaleDateString()}`;
+            renewalColor = "text-red-400 font-semibold";
+        }
+    }
+
+
+    return (
+        <div className={`${glassCardClasses} p-5 rounded-lg shadow-lg flex flex-col justify-between hover:border-[#0057e7]/70 transition-all duration-200 group`}>
+            <div>
+                <div className="flex justify-between items-start mb-3">
+                    {/* Mock Carrier Logo */}
+                    <div className="w-10 h-10 bg-gray-700 rounded-full flex items-center justify-center text-sm font-bold text-gray-400 ring-1 ring-gray-600">
+                        {policy.carrier?.substring(0, 2).toUpperCase() || 'N/A'}
+                    </div>
+                    <span className={`px-2.5 py-1 text-xs font-medium rounded-full border ${getStatusColor(policy.status)}`}>
+                        {policy.status}
+                    </span>
+                </div>
+                <h3 className="text-lg font-semibold text-gray-100 truncate group-hover:text-[#00e5ff]" title={policy.name || policy.policy_number}>{policy.name || policy.policy_number}</h3>
+                <p className="text-sm text-gray-400 truncate" title={policy.carrier}>{policy.carrier}</p>
+                <p className="text-xs text-gray-500 truncate mb-1" title={policy.property_name}>Property: {policy.property_name || 'N/A'}</p>
+                <p className="text-xs text-gray-500">Policy #: <span className="font-medium text-gray-300">{policy.policy_number || 'N/A'}</span></p>
+
+            </div>
+            <div className="mt-4 pt-4 border-t border-gray-700/50 space-y-2">
+                <div className="flex justify-between text-sm">
+                    <span className="text-gray-400">Premium:</span>
+                    <span className="font-semibold text-gray-200">${(policy.premium || 0).toLocaleString()}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                    <span className="text-gray-400">Renewal:</span>
+                    <span className={renewalColor}>{renewalText}</span>
+                </div>
+                 <div className="mt-3 flex items-center justify-end gap-2">
+                     <button onClick={onViewDetails} className={`text-xs py-1.5 px-3 rounded-md bg-gray-700 hover:bg-gray-600 text-gray-200 transition-colors ${focusRingClasses} inline-flex items-center gap-1.5`}><ExternalLink size={14}/> Details</button>
+                     <button onClick={() => alert(`Archive policy ${policy.policy_number}? (Not implemented)`)} className={`text-xs py-1.5 px-3 rounded-md bg-gray-700 hover:bg-red-600/30 hover:text-red-300 text-gray-400 transition-colors ${focusRingClasses} inline-flex items-center gap-1.5`}><Archive size={14}/> Archive</button>
+                 </div>
+            </div>
+        </div>
+    );
+};
+
+
+// PolicyDetailsDrawer Component (Placeholder)
+const PolicyDetailsDrawer = ({ policy, onClose, glassPanelClasses, focusRingClasses }) => {
+    // This is a placeholder for the detailed policy view.
+    // In a real app, this would be a more complex component with tabs for Overview, Coverages, Documents, Claims, AI Q&A.
+    const [activeDetailTab, setActiveDetailTab] = useState('overview');
+
+    if (!policy) return null;
+
+    const DetailTabButton = ({ label, tabName, icon: Icon }) => (
+        <button
+            onClick={() => setActiveDetailTab(tabName)}
+            className={`flex items-center gap-2 px-3 py-2 text-xs sm:text-sm font-medium rounded-t-md transition-colors ${focusRingClasses} ${
+                activeDetailTab === tabName ? 'bg-gray-700 text-[#00e5ff]' : 'text-gray-400 hover:bg-gray-600/50 hover:text-gray-200'
+            }`}
+        >
+           {Icon && <Icon size={16} />} {label}
+        </button>
+    );
+
+
+    return (
+        <div className="fixed inset-0 z-30 flex justify-end">
+            {/* Backdrop */}
+            <div className="fixed inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose}></div>
+
+            {/* Drawer Panel */}
+            <div className={`relative w-full max-w-xl md:max-w-2xl lg:max-w-3xl h-full ${glassPanelClasses} bg-[#18202b] border-l border-gray-700 flex flex-col shadow-2xl transform transition-transform duration-300 ease-in-out ${showDetailsDrawer ? 'translate-x-0' : 'translate-x-full'}`}>
+                {/* Drawer Header */}
+                <div className="flex items-center justify-between p-4 md:p-5 border-b border-gray-700">
+                    <h3 className="text-xl font-semibold text-gray-100 truncate" title={policy.name || policy.policy_number}>
+                        {policy.name || policy.policy_number}
+                    </h3>
+                    <button onClick={onClose} className={`p-2 rounded-md text-gray-400 hover:bg-gray-700 hover:text-white ${focusRingClasses}`}>
+                        <X size={24} />
+                    </button>
+                </div>
+
+                {/* Drawer Tabs */}
+                <div className="flex border-b border-gray-700 px-2 pt-2 md:px-4 md:pt-3 overflow-x-auto scrollbar-thin scrollbar-thumb-gray-600 scrollbar-track-gray-800">
+                    <DetailTabButton label="Overview" tabName="overview" icon={List} />
+                    <DetailTabButton label="Coverages" tabName="coverages" icon={ShieldCheck} />
+                    <DetailTabButton label="Documents" tabName="documents" icon={FileText} />
+                    <DetailTabButton label="Claims" tabName="claims" icon={AlertTriangle} />
+                    <DetailTabButton label="AI Q&A" tabName="ai_qa" icon={MessageSquare} />
+                </div>
+
+                {/* Drawer Content */}
+                <div className="flex-grow p-4 md:p-6 overflow-y-auto space-y-4 scrollbar-thin scrollbar-thumb-gray-600 scrollbar-track-gray-800">
+                    {activeDetailTab === 'overview' && (
+                        <div>
+                            <h4 className="text-lg font-semibold text-gray-200 mb-2">Policy Overview</h4>
+                            <p><strong>Policy Number:</strong> {policy.policy_number}</p>
+                            <p><strong>Carrier:</strong> {policy.carrier}</p>
+                            <p><strong>Linked Property:</strong> {policy.property_name}</p>
+                            <p><strong>Premium:</strong> ${policy.premium?.toLocaleString()}</p>
+                            <p><strong>Renewal Date:</strong> {new Date(policy.renewal_date).toLocaleDateString()}</p>
+                            <p><strong>Status:</strong> {policy.status}</p>
+                            <p className="mt-2"><strong>Coverage Types:</strong> {policy.coverage_types?.join(', ')}</p>
+                            {/* More details here */}
+                        </div>
+                    )}
+                    {activeDetailTab === 'coverages' && (
+                        <div><h4 className="text-lg font-semibold text-gray-200 mb-2">Coverages Matrix</h4><p className="text-gray-400">(Detailed coverage matrix with limits, deductibles - Not Implemented)</p></div>
+                    )}
+                     {activeDetailTab === 'documents' && (
+                        <div>
+                            <h4 className="text-lg font-semibold text-gray-200 mb-2">Policy Documents</h4>
+                            {policy.document_url ? (
+                                <a href={policy.document_url} target="_blank" rel="noopener noreferrer" className={`inline-flex items-center gap-2 text-[#00e5ff] hover:underline ${focusRingClasses}`}>
+                                    <Paperclip size={16} /> View Policy Document (Mock Link)
+                                </a>
+                            ) : (
+                                <p className="text-gray-400">No primary document URL available.</p>
+                            )}
+                            {/* List other associated documents */}
+                        </div>
+                    )}
+                    {activeDetailTab === 'claims' && (
+                        <div><h4 className="text-lg font-semibold text-gray-200 mb-2">Claims History</h4><p className="text-gray-400">(List of claims tied to this policy - Not Implemented)</p></div>
+                    )}
+                    {activeDetailTab === 'ai_qa' && (
+                        <div><h4 className="text-lg font-semibold text-gray-200 mb-2">AI Assistant Q&A</h4><p className="text-gray-400">(Chat panel for this policy - Not Implemented)</p></div>
+                    )}
+                </div>
+            </div>
+        </div>
+    );
+};
+
+
 export default App;
- 
