@@ -1,0 +1,613 @@
+import React, { useState, useEffect, useRef } from 'react';
+import { 
+    UploadCloud, MessageSquare, FileText, LayoutDashboard, Home, Settings, HelpCircle, LogOut, 
+    Search, Bell, UserCircle, Zap, BarChart2, ShieldCheck, Menu, X, MapPin, Building, Car, PlusCircle, 
+    List, Filter, DollarSign, FilePlus, Users, ShieldAlert, TrendingUp, ChevronLeft, ChevronRight, Image, Info, Map, FileDigit, Eye
+} from 'lucide-react';
+
+// Mock Supabase client (replace with actual Supabase client in a real project)
+const supabase = {
+  storage: {
+    from: () => ({
+      upload: async (filePath, file) => {
+        console.log(`Mock uploading ${file.name} to ${filePath}`);
+        await new Promise(resolve => setTimeout(resolve, 1500)); // Simulate upload delay
+        return { data: { path: filePath }, error: null };
+      },
+    }),
+  },
+  from: () => ({
+    insert: async (data) => {
+      console.log('Mock inserting data to Supabase:', data);
+      await new Promise(resolve => setTimeout(resolve, 500));
+      return { data: [data], error: null };
+    },
+    select: async (fields = '*') => {
+      console.log(`Mock selecting ${fields} from Supabase`);
+      await new Promise(resolve => setTimeout(resolve, 500));
+      if (fields.includes('policy_data')) { // Specific mock for policy data
+        return { data: [{ id: 1, name: 'Sample Policy.pdf', processed_text: 'This is a sample policy document text for testing the chatbot. It mentions coverage for accidental damage and theft. The policy number is POL12345.' }], error: null };
+      }
+      // Generic mock for properties
+      return { 
+        data: [
+          { id: 'prop1', name: 'Sunnyvale Home', address: '123 Main St, Sunnyvale, CA', type: 'Real Estate - Primary', created_at: '2024-01-15T10:00:00Z', value: 750000, image_url: 'https://placehold.co/600x400/1f2937/4a5568?text=Property+1', bedrooms: 3, bathrooms: 2, sqft: 1800, lot_size: 0.2, year_built: 1995, latitude: 37.3688, longitude: -122.0363 },
+          { id: 'prop2', name: 'Downtown Condo', address: '456 Market Ave, Metropolis, NY', type: 'Real Estate - Investment', created_at: '2023-11-20T14:30:00Z', value: 520000, image_url: 'https://placehold.co/600x400/1f2937/4a5568?text=Property+2', bedrooms: 2, bathrooms: 1, sqft: 950, year_built: 2010, latitude: 40.7128, longitude: -74.0060 },
+          { id: 'prop3', name: 'Reliable Sedan', address: 'N/A (Vehicle)', type: 'Vehicle', created_at: '2024-03-01T09:15:00Z', value: 22000, image_url: 'https://placehold.co/600x400/1f2937/4a5568?text=Vehicle+1', make: 'Toyota', model: 'Camry', year: 2021, vin: 'ABC123XYZ789' },
+        ], 
+        error: null 
+      };
+    }
+  }),
+};
+
+// Helper function to simulate NLP processing
+const mockNlpProcess = async (query, policyText) => {
+  await new Promise(resolve => setTimeout(resolve, 1000)); 
+  const lastWord = query.toLowerCase().split(" ").filter(Boolean).pop();
+  if (lastWord && policyText.toLowerCase().includes(lastWord)) {
+    return `Based on your policy, information regarding "${query}" suggests... [Details would be extracted here].`;
+  }
+  return `I couldn't find specific information about "${query}" in your policy. Could you try rephrasing?`;
+};
+
+// Navbar Component - Applying Glassmorphism and new brand colors
+const Navbar = ({ navigateToDashboard }) => {
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const navLinks = [ { name: 'Features', href: '#' }, { name: 'Pricing', href: '#' }, { name: 'About', href: '#' }, ];
+  const focusRingClasses = "focus-visible:ring-2 focus-visible:ring-[#00e5ff]";
+
+  return (
+    <nav className="bg-[#1f2937] bg-opacity-40 backdrop-blur-xs shadow-[0_4px_30px_rgba(0,0,0,0.1)] border border-white/5 text-white p-4 fixed w-full top-0 z-50">
+      <div className="container mx-auto flex justify-between items-center">
+        <div className="flex items-center space-x-2 cursor-pointer" onClick={() => window.location.reload()} >
+            <ShieldCheck className="h-8 w-8 text-[#0057e7]" /> 
+            <span className="text-2xl font-bold">ClaimGuardian</span>
+        </div>
+        <div className="hidden md:flex space-x-6 items-center">
+          {navLinks.map((link) => ( <a key={link.name} href={link.href} className={`text-[#0057e7] hover:text-[#00e5ff] hover:underline transition-colors ${focusRingClasses}`}> {link.name} </a> ))}
+          <button className={`hover:text-[#00e5ff] transition-colors ${focusRingClasses}`}>Sign In</button>
+          <button onClick={navigateToDashboard} className={`inline-flex items-center justify-center gap-2 px-4 py-2 rounded-md text-white bg-gradient-to-r from-[#0057e7] to-[#00e5ff] transition transform-gpu hover:scale-[1.02] active:scale-95 ${focusRingClasses}`} > Get Started </button>
+        </div>
+        <div className="md:hidden"> <button onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} aria-label="Toggle menu" className={focusRingClasses}> {isMobileMenuOpen ? <X size={28} /> : <Menu size={28} />} </button> </div>
+      </div>
+      {isMobileMenuOpen && (
+        <div className="md:hidden mt-4 space-y-4 p-4 bg-[#1f2937] bg-opacity-40 backdrop-blur-xs shadow-[0_4px_30px_rgba(0,0,0,0.1)] border border-white/5 rounded-lg">
+          {navLinks.map((link) => ( <a key={link.name} href={link.href} className={`block text-[#0057e7] hover:text-[#00e5ff] hover:underline transition-colors ${focusRingClasses}`}> {link.name} </a> ))}
+          <button className={`block w-full text-left hover:text-[#00e5ff] transition-colors py-2 ${focusRingClasses}`}>Sign In</button>
+          <button onClick={() => { navigateToDashboard(); setIsMobileMenuOpen(false); }} className={`w-full inline-flex items-center justify-center gap-2 px-4 py-2 rounded-md text-white bg-gradient-to-r from-[#0057e7] to-[#00e5ff] transition transform-gpu hover:scale-[1.02] active:scale-95 text-center ${focusRingClasses}`} > Get Started </button>
+        </div>
+      )}
+    </nav>
+  );
+};
+
+// Main Application Component
+const App = () => {
+  const [currentPage, setCurrentPage] = useState('home');
+  const [activeTab, setActiveTab] = useState('dashboardHome');
+
+  const navigate = (page) => { setCurrentPage(page); if (page === 'dashboard') { setActiveTab('dashboardHome'); } };
+  const switchTab = (tab) => { setActiveTab(tab); };
+
+  useEffect(() => { document.documentElement.classList.add('dark'); return () => { document.documentElement.classList.remove('dark'); }; }, []);
+
+  return (
+    <div className="min-h-screen bg-gray-900 text-gray-100 font-sans leading-relaxed selection:bg-[#0057e7]/80 selection:text-white">
+      <Navbar navigateToDashboard={() => navigate('dashboard')} />
+      <div className="pt-16"> 
+        {currentPage === 'home' && <HomePage navigateToDashboard={() => navigate('dashboard')} />}
+        {currentPage === 'dashboard' && <DashboardPage activeTab={activeTab} switchTab={switchTab} navigateHome={() => navigate('home')} />}
+      </div>
+    </div>
+  );
+};
+
+// Home Page Component (Simplified for brevity, no changes from previous version)
+const HomePage = ({ navigateToDashboard }) => {
+  const focusRingClasses = "focus-visible:ring-2 focus-visible:ring-[#00e5ff]";
+  const features = [ { icon: <FileText size={40} className="mx-auto mb-4 text-[#0057e7]" />, title: "Policy Management", description: "Store and manage all your insurance policies in one secure place. Get timely reminders for renewals and payments.", }, { icon: <Zap size={40} className="mx-auto mb-4 text-[#0057e7]" />, title: "Claims Tracking", description: "Submit and track insurance claims with ease. Get real-time updates on claim status and processing timelines.", }, { icon: <BarChart2 size={40} className="mx-auto mb-4 text-[#0057e7]" />, title: "AI-Powered Insights", description: "Get personalized recommendations to optimize your coverage and identify potential gaps in protection.", }, ];
+  const testimonials = [ { quote: "ClaimGuardian saved me countless hours during my recent home insurance claim. The AI analysis of my policy was spot on!", author: "Sarah M.", role: "Homeowner" }, { quote: "As someone with multiple insurance policies, keeping track was a nightmare until I found ClaimGuardian. It's a lifesaver!", author: "John B.", role: "Small Business Owner" }, { quote: "The document analysis feature is incredible. It automatically extracted all the key details from my policy and helped me understand my coverage better.", author: "Lisa K.", role: "Freelancer" } ];
+  const glassCardClasses = "p-8 backdrop-blur-xs shadow-[0_4px_30px_rgba(0,0,0,0.1)] rounded-lg bg-[#1f2937] bg-opacity-40 border border-white/5 hover:shadow-xl transition-shadow duration-300";
+
+  return ( <div className="flex flex-col items-center justify-center min-h-[calc(100vh-4rem)] pt-12 pb-12 px-4 md:px-8 text-center"> <section className="relative z-10 max-w-3xl mb-24"> <h1 className="text-4xl md:text-6xl font-bold mb-4 text-gray-100"> Simplify Your Insurance Management </h1> <p className="text-lg md:text-xl text-gray-300 mb-10 leading-relaxed"> ClaimGuardian helps you manage all your insurance policies, track claims, and get AI-powered insights to ensure you're properly covered. </p> <div className="flex flex-col sm:flex-row justify-center items-center space-y-4 sm:space-y-0 sm:space-x-4"> <button onClick={navigateToDashboard} className={`w-full sm:w-auto inline-flex items-center justify-center gap-2 px-8 py-3 rounded-md text-white bg-gradient-to-r from-[#0057e7] to-[#00e5ff] transition transform-gpu hover:scale-[1.02] active:scale-95 text-lg ${focusRingClasses}`} > Start Free Trial </button> <button className={`w-full sm:w-auto px-8 py-3 rounded-md bg-gray-700 text-gray-100 hover:bg-gray-600 transition-colors text-lg ${focusRingClasses}`} > Learn More </button> </div> </section> <section className="w-full max-w-5xl mb-24 px-4"> <div className="grid grid-cols-1 md:grid-cols-3 gap-8"> {features.map((feature, index) => ( <div key={index} className={glassCardClasses}> {feature.icon} <h3 className="text-xl font-semibold mb-3 text-gray-100">{feature.title}</h3> <p className="text-sm leading-relaxed text-gray-300">{feature.description}</p> </div> ))} </div> </section> <section className="w-full max-w-5xl px-4"> <h2 className="text-2xl md:text-3xl font-semibold mb-4 text-gray-100 text-center">Trusted by Thousands</h2> <p className="text-gray-400 mb-12 text-center max-w-2xl mx-auto leading-relaxed"> See what our users are saying about how ClaimGuardian has transformed their insurance management experience. </p> <div className="grid grid-cols-1 md:grid-cols-3 gap-8"> {testimonials.map((testimonial, index) => ( <div key={index} className={`${glassCardClasses} flex flex-col justify-between`}> <blockquote className="italic mb-6 text-gray-300">"{testimonial.quote}"</blockquote> <div> <p className="font-semibold text-gray-100">{testimonial.author}</p> <p className="text-sm text-[#0057e7]">{testimonial.role}</p> </div> </div> ))} </div> </section> <footer className="w-full mt-24 p-4 text-center text-sm text-gray-500 border-t border-gray-700"> © {new Date().getFullYear()} ClaimGuardian. All rights reserved. </footer> </div> );};
+
+// Dashboard Page Component
+const DashboardPage = ({ activeTab, switchTab, navigateHome }) => {
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const focusRingClasses = "focus-visible:ring-2 focus-visible:ring-[#00e5ff]";
+  const glassPanelClasses = "backdrop-blur-xs shadow-[0_4px_30px_rgba(0,0,0,0.1)] rounded-lg bg-[#1f2937] bg-opacity-40 border border-white/5";
+
+  return (
+    <div className="flex h-[calc(100vh-4rem)]">
+      <aside className={`fixed inset-y-0 left-0 mt-16 md:mt-0 z-20 flex flex-col bg-[#1f2937] shadow-lg transition-transform duration-300 ease-in-out transform ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} md:relative md:translate-x-0 md:w-64 border-r border-gray-700`}>
+        <div className="flex items-center justify-between p-4 h-16 border-b border-gray-700 md:hidden">
+          <div className="flex items-center cursor-pointer" onClick={navigateHome} title="Go to Home Page"> <ShieldCheck className="h-7 w-7 text-[#0057e7]" /> <h1 className="text-xl font-semibold text-gray-100 ml-2">ClaimGuardian</h1> </div>
+          <button onClick={() => setSidebarOpen(false)} className={`md:hidden text-gray-400 hover:text-white ${focusRingClasses}`}> <X size={24} /> </button>
+        </div>
+        <div className="hidden md:flex items-center p-4 h-16 border-b border-gray-700"> <LayoutDashboard className="h-6 w-6 text-[#0057e7] mr-2" /> <h2 className="text-lg font-semibold text-gray-100">Dashboard Menu</h2> </div>
+        <nav className="flex-1 p-4 space-y-2">
+          <DashboardTab icon={<LayoutDashboard size={20} />} label="Dashboard Home" isActive={activeTab === 'dashboardHome'} onClick={() => switchTab('dashboardHome')} />
+          {/* New Property Tab */}
+          <DashboardTab icon={<Building size={20} />} label="Properties" isActive={activeTab === 'properties'} onClick={() => switchTab('properties')} />
+          <DashboardTab icon={<UploadCloud size={20} />} label="Upload Policy" isActive={activeTab === 'uploadPolicy'} onClick={() => switchTab('uploadPolicy')} />
+          <DashboardTab icon={<MessageSquare size={20} />} label="Review Policy (Chat)" isActive={activeTab === 'reviewPolicy'} onClick={() => switchTab('reviewPolicy')} />
+          <p className="px-3 pt-4 pb-2 text-xs font-medium text-gray-500 uppercase">Future Features</p>
+          <DashboardTab icon={<Search size={20} />} label="Claim Tracking" isDisabled={true} />
+          <DashboardTab icon={<FileText size={20} />} label="Policy Comparison" isDisabled={true} />
+        </nav>
+        <div className="p-4 border-t border-gray-700"> <DashboardTab icon={<Settings size={20} />} label="Settings" isDisabled={true}/> <DashboardTab icon={<HelpCircle size={20} />} label="Help & Support" isDisabled={true}/> <DashboardTab icon={<LogOut size={20} />} label="Logout" onClick={navigateHome} /> </div>
+      </aside>
+      <main className="flex-1 flex flex-col overflow-y-auto">
+        <header className="sticky top-0 z-10 flex items-center justify-between h-16 px-6 bg-[#1f2937] bg-opacity-90 backdrop-blur-md border-b border-gray-700">
+          <button onClick={() => setSidebarOpen(true)} className={`md:hidden text-gray-300 hover:text-white ${focusRingClasses}`}> <Menu size={24} /> </button>
+          <div className="text-xl font-semibold text-gray-100">
+            {activeTab === 'properties' && 'Manage Your Properties'}
+            {activeTab === 'uploadPolicy' && 'Upload Your Insurance Policy'}
+            {activeTab === 'reviewPolicy' && 'Review Policy with AI Chatbot'}
+            {activeTab === 'dashboardHome' && 'Welcome to Your Dashboard'}
+          </div>
+          <div className="flex items-center space-x-4"> <button className={`text-gray-400 hover:text-white relative ${focusRingClasses}`} title="Notifications"> <Bell size={22} /> <span className="absolute top-0 right-0 block h-2 w-2 rounded-full bg-[#ef4444] ring-2 ring-[#1f2937]"></span> </button> <UserCircle size={28} className="text-gray-400" title="User Profile"/> </div>
+        </header>
+        <div className="p-6 md:p-10">
+          {activeTab === 'dashboardHome' && <DashboardHomeContent glassPanelClasses={glassPanelClasses} />}
+          {activeTab === 'properties' && <PropertyTab glassPanelClasses={glassPanelClasses} focusRingClasses={focusRingClasses} />}
+          {activeTab === 'uploadPolicy' && <UploadPolicyTab glassPanelClasses={glassPanelClasses} focusRingClasses={focusRingClasses}/>}
+          {activeTab === 'reviewPolicy' && <ReviewPolicyChatbot glassPanelClasses={glassPanelClasses} focusRingClasses={focusRingClasses}/>}
+        </div>
+      </main>
+    </div>
+  );
+};
+
+const DashboardTab = ({ icon, label, isActive, onClick, isDisabled }) => {
+  const focusRingClasses = "focus-visible:ring-2 focus-visible:ring-[#00e5ff]";
+  return ( <button onClick={onClick} disabled={isDisabled} className={`flex items-center w-full px-3 py-3 text-sm font-medium rounded-md transition-colors duration-150 ${focusRingClasses} ${isActive ? 'bg-[#0057e7] text-white shadow-md' : 'text-gray-300 hover:bg-gray-700 hover:text-gray-100'} ${isDisabled ? 'opacity-50 cursor-not-allowed' : ''}`} > {icon} <span className="ml-3">{label}</span> </button> );
+};
+
+const DashboardHomeContent = ({ glassPanelClasses }) => {
+    return ( <div className={`${glassPanelClasses} p-8`}> <h1 className="text-3xl font-bold mb-6 text-gray-100">Welcome to ClaimGuardian!</h1> <p className="text-gray-300 mb-4 leading-relaxed"> This is your central hub for managing your insurance policies. Use the tabs on the left to navigate: </p> <ul className="list-disc list-inside text-gray-300 space-y-2 mb-6"> <li><strong className="text-[#0057e7]">Upload Policy:</strong> Add new insurance documents to your account.</li> <li><strong className="text-[#00e5ff]">Review Policy (Chat):</strong> Ask our AI assistant questions about your uploaded policies.</li> </ul> <p className="text-gray-400 text-sm leading-relaxed"> We are continuously working on adding more features like claim tracking and policy comparison. Stay tuned! </p> <div className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-6"> <div className="bg-gray-700 p-6 rounded-lg shadow-lg"> <h3 className="text-xl font-semibold text-gray-100 mb-3">Quick Stats</h3> <p className="text-gray-300">Policies Uploaded: <span className="font-bold text-[#0057e7]">0</span></p> <p className="text-gray-300">Queries Answered: <span className="font-bold text-[#00e5ff]">0</span></p> </div> <div className="bg-gray-700 p-6 rounded-lg shadow-lg"> <h3 className="text-xl font-semibold text-gray-100 mb-3">Next Steps</h3> <p className="text-gray-300">1. Go to "Upload Policy" to add your first document.</p> <p className="text-gray-300">2. Try out the "Review Policy" chat to understand your coverage.</p> </div> </div> </div> );
+};
+
+// Upload Policy Tab Content (Simplified for brevity, no changes from previous version)
+const UploadPolicyTab = ({ glassPanelClasses, focusRingClasses }) => { const [selectedFile, setSelectedFile] = useState(null); const [uploadStatus, setUploadStatus] = useState(''); const [uploadMessage, setUploadMessage] = useState(''); const [policyDetails, setPolicyDetails] = useState(null); const fileInputRef = useRef(null); const handleFileChange = (event) => { const file = event.target.files[0]; if (file && file.type === "application/pdf") { setSelectedFile(file); setUploadStatus(''); setUploadMessage(''); setPolicyDetails(null); } else { setSelectedFile(null); setUploadStatus('error'); setUploadMessage('Please select a PDF file.'); } }; const handleUpload = async () => { if (!selectedFile) { setUploadStatus('error'); setUploadMessage('Please select a file to upload.'); return; } setUploadStatus('uploading'); setUploadMessage(`Uploading ${selectedFile.name}...`); try { console.log("Mocking Supabase storage upload..."); await new Promise(resolve => setTimeout(resolve, 1000)); const extractedText = `Mock extracted text from ${selectedFile.name}. Policy Number: POL12345...`; const parsedData = { policy_number: `POL-${Math.random().toString(36).substr(2, 7).toUpperCase()}`, insured_name: "Jane Doe (Mock)", coverage_start_date: new Date().toISOString().split('T')[0], coverage_end_date: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], document_name: selectedFile.name, processed_text: extractedText, }; console.log("Mocking Supabase DB insert..."); await new Promise(resolve => setTimeout(resolve, 500)); setPolicyDetails(parsedData); setUploadStatus('success'); setUploadMessage(`${selectedFile.name} uploaded and processed successfully!`); } catch (error) { console.error("Upload error:", error); setUploadStatus('error'); setUploadMessage(`Failed to upload. ${error.message || ''}`); } }; return ( <div className={`${glassPanelClasses} p-8`}> <h2 className="text-2xl font-semibold mb-6 text-gray-100">Upload Your Insurance Policy</h2> <p className="text-gray-300 mb-6 leading-relaxed"> Upload your insurance policy document (PDF format). We'll process it and store it securely. </p> <div className="mb-6"> <label htmlFor="file-upload-input-policy" className="block text-sm font-medium text-gray-300 mb-2"> Select Policy Document (PDF only) </label> <div className={`mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-gray-600 border-dashed rounded-md hover:border-[#0057e7] transition-colors ${focusRingClasses}`}> <div className="space-y-1 text-center"> <UploadCloud className="mx-auto h-12 w-12 text-gray-500" /> <div className="flex text-sm text-gray-400"> <label htmlFor="file-upload-input-policy" className={`relative cursor-pointer bg-gray-700 rounded-md font-medium text-[#0057e7] hover:text-[#00e5ff] px-2 py-1 ${focusRingClasses}`} > <span>Upload a file</span> <input id="file-upload-input-policy" name="file-upload-input-policy" type="file" className="sr-only" accept=".pdf" onChange={handleFileChange} ref={fileInputRef} /> </label> <p className="pl-1">or drag and drop</p> </div> <p className="text-xs text-gray-500">PDF up to 10MB</p> </div> </div> {selectedFile && <p className="mt-2 text-sm text-gray-400">Selected file: {selectedFile.name}</p>} </div> <button onClick={handleUpload} disabled={!selectedFile || uploadStatus === 'uploading'} className={`w-full inline-flex items-center justify-center gap-2 px-6 py-3 rounded-md text-white bg-gradient-to-r from-[#0057e7] to-[#00e5ff] transition transform-gpu hover:scale-[1.02] active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed ${focusRingClasses}`} > {uploadStatus === 'uploading' ? ( <> <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"> <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle> <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path> </svg> Processing... </> ) : ( <> <UploadCloud size={20} className="mr-2" /> Upload and Process Policy </> )} </button> {uploadMessage && ( <div className={`mt-4 p-4 rounded-md text-sm ${ uploadStatus === 'success' ? 'bg-[#10b981]/30 text-green-300 border border-green-500' : uploadStatus === 'error' ? 'bg-[#ef4444]/30 text-red-300 border border-red-500' : 'bg-[#0057e7]/30 text-blue-300 border border-blue-500' }`}> {uploadMessage} </div> )} {policyDetails && uploadStatus === 'success' && ( <div className="mt-6 p-6 bg-gray-700 rounded-lg border border-gray-600"> <h3 className="text-lg font-semibold text-gray-100 mb-3">Processed Policy Information:</h3> <ul className="space-y-1 text-gray-300 text-sm"> <li><strong>Document Name:</strong> {policyDetails.document_name}</li> <li><strong>Policy Number:</strong> {policyDetails.policy_number}</li> <li className="mt-2 pt-2 border-t border-gray-600"> <strong className="text-gray-200">Extracted Text (Snippet):</strong> <code className="block font-mono text-xs bg-gray-800 text-gray-400 p-2 mt-1 rounded max-h-20 overflow-y-auto"> {policyDetails.processed_text.substring(0, 200)}... </code> </li> </ul> <p className="mt-4 text-sm text-[#10b981]"> You can now go to the "Review Policy (Chat)" tab to ask questions about this policy. </p> </div> )} </div> ); };
+
+// Review Policy / Chatbot Tab Content (Simplified for brevity, no changes from previous version)
+const ReviewPolicyChatbot = ({ glassPanelClasses, focusRingClasses }) => { const [messages, setMessages] = useState([ { id: Date.now(), text: "Hello! I'm your policy assistant. After you upload a policy, I can help you understand it. Ask me anything!", sender: 'bot' } ]); const [inputValue, setInputValue] = useState(''); const [isLoading, setIsLoading] = useState(false); const [currentPolicyText, setCurrentPolicyText] = useState(''); const messagesEndRef = useRef(null); useEffect(() => { const fetchPolicyData = async () => { setIsLoading(true); try { console.log("Mocking fetching policy data for chatbot..."); await new Promise(resolve => setTimeout(resolve, 700)); const mockPolicyData = { processed_text: "This is a sample policy document text..." }; if (mockPolicyData && mockPolicyData.processed_text) { setCurrentPolicyText(mockPolicyData.processed_text); if (messages.length === 1 && messages[0].text.startsWith("Hello!")) { setMessages(prev => [...prev, {id: Date.now() + 1, text: "I've loaded your latest policy. Feel free to ask questions.", sender: 'bot'}]); } } else { console.log("No policy data found initially."); } } catch (error) { console.error("Error fetching policy for chat:", error); setMessages(prev => [...prev, {id: Date.now() + 1, text: "Sorry, error loading policy info.", sender: 'bot'}]); } setIsLoading(false); }; fetchPolicyData(); }, []); const scrollToBottom = () => { messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }); }; useEffect(scrollToBottom, [messages]); const handleSendMessage = async (e) => { e.preventDefault(); if (inputValue.trim() === '' || isLoading) return; const newUserMessage = { id: Date.now(), text: inputValue, sender: 'user' }; setMessages(prevMessages => [...prevMessages, newUserMessage]); const currentInput = inputValue; setInputValue(''); setIsLoading(true); try { if (!currentPolicyText) { const botResponse = { id: Date.now() + 1, text: "No policy loaded. Please upload one first.", sender: 'bot' }; setMessages(prevMessages => [...prevMessages, botResponse]); setIsLoading(false); return; } const responseText = await mockNlpProcess(currentInput, currentPolicyText); const botResponse = { id: Date.now() + 1, text: responseText, sender: 'bot' }; setMessages(prevMessages => [...prevMessages, botResponse]); } catch (error) { console.error("Chatbot error:", error); const errorResponse = { id: Date.now() + 1, text: "Sorry, issue processing request.", sender: 'bot' }; setMessages(prevMessages => [...prevMessages, errorResponse]); } setIsLoading(false); }; return ( <div className={`${glassPanelClasses} flex flex-col h-[calc(100vh-10rem-4rem)] md:h-[calc(100vh-12rem-4rem)] max-h-[600px] p-0`}> <h2 className="text-2xl font-semibold p-6 border-b border-gray-700 text-gray-100"> Review Policy - AI Chat </h2> <div className="flex-grow p-6 space-y-4 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-600 scrollbar-track-gray-700"> {messages.map(message => ( <div key={message.id} className={`flex ${message.sender === 'user' ? 'justify-end' : 'justify-start'}`}> <div className={`max-w-xs lg:max-w-md px-4 py-3 rounded-xl shadow ${ message.sender === 'user' ? 'bg-[#0057e7] text-white rounded-br-none' : 'bg-gray-700 text-gray-200 rounded-bl-none' }`} > <p className="text-sm whitespace-pre-wrap">{message.text}</p> </div> </div> ))} <div ref={messagesEndRef} /> </div> <form onSubmit={handleSendMessage} className="p-4 border-t border-gray-700"> <div className="flex items-center space-x-2"> <input type="text" value={inputValue} onChange={(e) => setInputValue(e.target.value)} placeholder={isLoading ? "Assistant is typing..." : "Ask a question about your policy..."} className={`flex-grow p-3 bg-gray-700 border border-gray-600 rounded-lg outline-none text-gray-200 placeholder-gray-400 ${focusRingClasses} focus:border-transparent`} disabled={isLoading} /> <button type="submit" disabled={isLoading || inputValue.trim() === ''} className={`inline-flex items-center justify-center gap-2 px-6 py-3 rounded-md text-white bg-gradient-to-r from-[#0057e7] to-[#00e5ff] transition transform-gpu hover:scale-[1.02] active:scale-95 disabled:opacity-50 ${focusRingClasses}`} > Send </button> </div> </form> </div> ); };
+
+// ***********************************************************************************
+// * NEW PROPERTY TAB COMPONENTS START HERE
+// ***********************************************************************************
+
+// Main Property Tab Component
+const PropertyTab = ({ glassPanelClasses, focusRingClasses }) => {
+    const [currentView, setCurrentView] = useState('list'); // 'list', 'detail', 'form'
+    const [selectedProperty, setSelectedProperty] = useState(null);
+    const [properties, setProperties] = useState([]);
+    const [isLoading, setIsLoading] = useState(true);
+
+    useEffect(() => {
+        const fetchProperties = async () => {
+            setIsLoading(true);
+            const { data, error } = await supabase.from('properties').select(); // Mocked call
+            if (error) {
+                console.error("Error fetching properties:", error);
+                // Handle error appropriately in UI
+            } else {
+                setProperties(data || []);
+            }
+            setIsLoading(false);
+        };
+        fetchProperties();
+    }, []);
+
+    const handleViewDetail = (property) => {
+        setSelectedProperty(property);
+        setCurrentView('detail');
+    };
+
+    const handleAddNewProperty = () => {
+        setSelectedProperty(null); // Clear any selected property when going to form
+        setCurrentView('form');
+    };
+    
+    const handleFormSubmit = (newProperty) => {
+        // In a real app, this would involve a Supabase insert and then re-fetch or update local state
+        setProperties(prev => [...prev, { ...newProperty, id: `prop${prev.length + 1}`, created_at: new Date().toISOString() }]);
+        setCurrentView('list');
+    };
+
+
+    if (isLoading) {
+        return <div className={`${glassPanelClasses} p-8 text-center`}><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#0057e7] mx-auto"></div><p className="mt-4">Loading properties...</p></div>;
+    }
+
+    return (
+        <div>
+            {currentView === 'list' && (
+                <PropertyList
+                    properties={properties}
+                    onViewDetail={handleViewDetail}
+                    onAddNew={handleAddNewProperty}
+                    glassPanelClasses={glassPanelClasses}
+                    focusRingClasses={focusRingClasses}
+                />
+            )}
+            {currentView === 'detail' && selectedProperty && (
+                <PropertyDetail
+                    property={selectedProperty}
+                    onBack={() => setCurrentView('list')}
+                    glassPanelClasses={glassPanelClasses}
+                    focusRingClasses={focusRingClasses}
+                />
+            )}
+            {currentView === 'form' && (
+                <PropertyForm
+                    onCancel={() => setCurrentView('list')}
+                    onSubmit={handleFormSubmit} // Pass the new handler
+                    glassPanelClasses={glassPanelClasses}
+                    focusRingClasses={focusRingClasses}
+                />
+            )}
+        </div>
+    );
+};
+
+// Property List View
+const PropertyList = ({ properties, onViewDetail, onAddNew, glassPanelClasses, focusRingClasses }) => {
+    const [searchTerm, setSearchTerm] = useState('');
+
+    const filteredProperties = properties.filter(prop => 
+        prop.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        prop.address.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        prop.type.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+
+    return (
+        <div className="space-y-6">
+            <div className={`${glassPanelClasses} p-6 flex flex-col md:flex-row justify-between items-center gap-4`}>
+                <h2 className="text-2xl font-semibold text-gray-100">My Properties ({filteredProperties.length})</h2>
+                <div className="flex items-center gap-4 w-full md:w-auto">
+                    <div className="relative flex-grow md:flex-grow-0">
+                        <input
+                            type="text"
+                            placeholder="Search properties..."
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                            className={`w-full p-2 pr-8 bg-gray-700 border border-gray-600 rounded-md outline-none text-gray-200 placeholder-gray-400 ${focusRingClasses} focus:border-transparent`}
+                        />
+                        <Search size={18} className="absolute right-2.5 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                    </div>
+                    <button
+                        onClick={onAddNew}
+                        className={`inline-flex items-center justify-center gap-2 px-4 py-2 rounded-md text-white bg-gradient-to-r from-[#0057e7] to-[#00e5ff] transition transform-gpu hover:scale-[1.02] active:scale-95 ${focusRingClasses}`}
+                    >
+                        <PlusCircle size={20} /> Add New
+                    </button>
+                </div>
+            </div>
+
+            {/* Placeholder for Map Visualization */}
+            <div className={`${glassPanelClasses} p-6 text-center`}>
+                <MapPin size={48} className="mx-auto text-[#0057e7] mb-2" />
+                <h3 className="text-xl font-semibold text-gray-100">Property Locations Overview</h3>
+                <p className="text-gray-400 text-sm mt-2">
+                    (Map visualization of all property locations will be displayed here. This requires Google Maps API integration.)
+                </p>
+                <div className="mt-4 h-64 bg-gray-700 rounded-md flex items-center justify-center text-gray-500">
+                    [Map Placeholder]
+                </div>
+            </div>
+            
+            {filteredProperties.length > 0 ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {filteredProperties.map(prop => (
+                        <PropertyCard key={prop.id} property={prop} onViewDetail={onViewDetail} glassCardClasses={glassPanelClasses} focusRingClasses={focusRingClasses} />
+                    ))}
+                </div>
+            ) : (
+                 <div className={`${glassPanelClasses} p-8 text-center`}>
+                    <Building size={48} className="mx-auto text-gray-500 mb-4" />
+                    <h3 className="text-xl font-semibold text-gray-100">No Properties Found</h3>
+                    <p className="text-gray-400 mt-2">
+                        {searchTerm ? "No properties match your search criteria." : "You haven't added any properties yet. Click 'Add New' to get started."}
+                    </p>
+                </div>
+            )}
+        </div>
+    );
+};
+
+// Property Card Component
+const PropertyCard = ({ property, onViewDetail, glassCardClasses, focusRingClasses }) => {
+    return (
+        <div className={`${glassCardClasses} flex flex-col justify-between cursor-pointer hover:border-[#0057e7]/50 transition-all duration-300 group`} onClick={() => onViewDetail(property)}>
+            <div>
+                <img src={property.image_url || `https://placehold.co/600x400/1f2937/4a5568?text=${encodeURIComponent(property.name)}`} alt={property.name} className="w-full h-48 object-cover rounded-md mb-4" onError={(e) => e.target.src='https://placehold.co/600x400/1f2937/4a5568?text=Image+Error'}/>
+                <h3 className="text-xl font-semibold text-gray-100 mb-1 group-hover:text-[#00e5ff] transition-colors">{property.name}</h3>
+                <p className="text-sm text-gray-400 mb-1 flex items-center"><MapPin size={14} className="mr-1.5 flex-shrink-0" /> {property.address}</p>
+                <p className="text-sm text-gray-500 mb-2">{property.type}</p>
+            </div>
+            <div className="mt-auto pt-3 border-t border-white/10">
+                <div className="flex justify-between items-center text-sm">
+                    <span className="text-gray-400">Value: <span className="font-semibold text-gray-200">${property.value?.toLocaleString() || 'N/A'}</span></span>
+                    <button className={`text-xs text-[#0057e7] hover:text-[#00e5ff] font-semibold py-1 px-2 rounded-md group-hover:bg-gray-700 transition-colors ${focusRingClasses}`}>
+                        View Details <Eye size={14} className="inline ml-1" />
+                    </button>
+                </div>
+                 <p className="text-xs text-gray-500 mt-1">Added: {new Date(property.created_at).toLocaleDateString()}</p>
+            </div>
+        </div>
+    );
+};
+
+
+// Property Detail View (Placeholder Structure)
+const PropertyDetail = ({ property, onBack, glassPanelClasses, focusRingClasses }) => {
+    const [activeSubTab, setActiveSubTab] = useState('location');
+
+    // Mock data for detail view sections
+    const insurability = { rating: 'B+', issues: ['Minor flood zone proximity (Zone X shaded)', 'Roof older than 15 years'] };
+    const estimatedPremium = { amount: 1250, currency: 'USD' };
+    const documents = [ {id: 'doc1', name: 'Purchase Agreement.pdf', type: 'Agreement', date: '2024-01-10'}, {id: 'doc2', name: 'Inspection Report.pdf', type: 'Report', date: '2024-01-05'} ];
+    const clients = [ {id: 'client1', name: 'John & Jane Doe', role: 'Owner'} ];
+
+    const DetailTabButton = ({ label, tabName, icon: Icon }) => (
+        <button
+            onClick={() => setActiveSubTab(tabName)}
+            className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium rounded-t-md transition-colors ${focusRingClasses} ${activeSubTab === tabName ? 'bg-gray-700 text-[#00e5ff]' : 'text-gray-300 hover:bg-gray-600 hover:text-gray-100'}`}
+        >
+            <Icon size={16} /> {label}
+        </button>
+    );
+
+    return (
+        <div className={`${glassPanelClasses} p-0`}> {/* Remove padding from main panel, apply to children */}
+            <div className="p-6 flex justify-between items-center border-b border-white/10">
+                <h2 className="text-2xl font-semibold text-gray-100">{property.name}</h2>
+                <button onClick={onBack} className={`inline-flex items-center gap-2 px-4 py-2 rounded-md bg-gray-700 text-gray-100 hover:bg-gray-600 transition-colors ${focusRingClasses}`}>
+                    <ChevronLeft size={20} /> Back to List
+                </button>
+            </div>
+
+            <div className="p-6 grid grid-cols-1 lg:grid-cols-3 gap-6">
+                {/* Left Column: Image and Key Info */}
+                <div className="lg:col-span-1 space-y-6">
+                    <img src={property.image_url || `https://placehold.co/600x400/1f2937/4a5568?text=${encodeURIComponent(property.name)}`} alt={property.name} className="w-full h-auto object-cover rounded-lg shadow-lg" onError={(e) => e.target.src='https://placehold.co/600x400/1f2937/4a5568?text=Image+Error'}/>
+                    
+                    <div className="bg-gray-700/50 p-4 rounded-lg space-y-2">
+                        <h3 className="text-lg font-semibold text-gray-200 border-b border-gray-600 pb-2 mb-2">Key Information</h3>
+                        <p className="text-sm text-gray-300"><strong>Type:</strong> {property.type}</p>
+                        <p className="text-sm text-gray-300"><strong>Address:</strong> {property.address}</p>
+                        <p className="text-sm text-gray-300"><strong>Value:</strong> ${property.value?.toLocaleString() || 'N/A'}</p>
+                        {property.bedrooms && <p className="text-sm text-gray-300"><strong>Bedrooms:</strong> {property.bedrooms}</p>}
+                        {property.bathrooms && <p className="text-sm text-gray-300"><strong>Bathrooms:</strong> {property.bathrooms}</p>}
+                        {property.sqft && <p className="text-sm text-gray-300"><strong>SqFt:</strong> {property.sqft?.toLocaleString()}</p>}
+                        {property.make && <p className="text-sm text-gray-300"><strong>Make:</strong> {property.make}</p>}
+                        {property.model && <p className="text-sm text-gray-300"><strong>Model:</strong> {property.model}</p>}
+                        {property.year && <p className="text-sm text-gray-300"><strong>Year:</strong> {property.year}</p>}
+                    </div>
+                </div>
+
+                {/* Right Column: Tabs and Details */}
+                <div className="lg:col-span-2">
+                    <div className="flex border-b border-gray-700 mb-0">
+                        <DetailTabButton label="Location/Details" tabName="location" icon={Info} />
+                        <DetailTabButton label="Map" tabName="map" icon={Map} />
+                        <DetailTabButton label="Documents" tabName="documents" icon={FileDigit} />
+                        <DetailTabButton label="Clients" tabName="clients" icon={Users} />
+                    </div>
+                    <div className="py-6 bg-gray-800/30 rounded-b-lg min-h-[300px]"> {/* Added bg for tab content area */}
+                        {activeSubTab === 'location' && (
+                            <div className="px-6 space-y-3">
+                                <h4 className="text-lg font-semibold text-gray-200">Property Metrics</h4>
+                                <p className="text-sm text-gray-400">Detailed attributes and characteristics of the property.</p>
+                                {/* Add more specific details here based on property type */}
+                            </div>
+                        )}
+                        {activeSubTab === 'map' && (
+                            <div className="px-6 text-center">
+                                <h4 className="text-lg font-semibold text-gray-200 mb-2">Interactive Map & Street View</h4>
+                                <div className="h-64 bg-gray-700 rounded-md flex items-center justify-center text-gray-500 mb-4">[Google Maps Embed Placeholder for {property.address}]</div>
+                                <div className="h-40 bg-gray-700 rounded-md flex items-center justify-center text-gray-500">[Street View Placeholder]</div>
+                                <p className="text-xs text-gray-500 mt-2">Map integration requires Google Maps API setup.</p>
+                                <div className="mt-4 space-x-2">
+                                    <button className={`px-3 py-1.5 text-xs rounded-md bg-gray-600 text-gray-300 hover:bg-gray-500 ${focusRingClasses}`}>Nearby Schools (N/A)</button>
+                                    <button className={`px-3 py-1.5 text-xs rounded-md bg-gray-600 text-gray-300 hover:bg-gray-500 ${focusRingClasses}`}>Restaurants (N/A)</button>
+                                </div>
+                            </div>
+                        )}
+                        {activeSubTab === 'documents' && (
+                            <div className="px-6">
+                                <h4 className="text-lg font-semibold text-gray-200 mb-3">Associated Documents</h4>
+                                {documents.length > 0 ? (
+                                    <ul className="space-y-2">
+                                        {documents.map(doc => (
+                                            <li key={doc.id} className="p-3 bg-gray-700/70 rounded-md flex justify-between items-center text-sm">
+                                                <div><FileText size={16} className="inline mr-2 text-[#00e5ff]" />{doc.name} <span className="text-xs text-gray-400">({doc.type})</span></div>
+                                                <span className="text-xs text-gray-500">{doc.date}</span>
+                                            </li>
+                                        ))}
+                                    </ul>
+                                ) : <p className="text-sm text-gray-400">No documents associated.</p>}
+                            </div>
+                        )}
+                        {activeSubTab === 'clients' && (
+                             <div className="px-6">
+                                <h4 className="text-lg font-semibold text-gray-200 mb-3">Associated Clients</h4>
+                                {clients.length > 0 ? (
+                                    <ul className="space-y-2">
+                                        {clients.map(client => (
+                                            <li key={client.id} className="p-3 bg-gray-700/70 rounded-md text-sm">
+                                                <Users size={16} className="inline mr-2 text-[#00e5ff]" />{client.name} <span className="text-xs text-gray-400">({client.role})</span>
+                                            </li>
+                                        ))}
+                                    </ul>
+                                ) : <p className="text-sm text-gray-400">No clients associated.</p>}
+                            </div>
+                        )}
+                    </div>
+                </div>
+            </div>
+
+            {/* Insurability & Premium Sections */}
+            <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-6 border-t border-white/10">
+                <div className="bg-gray-700/50 p-4 rounded-lg">
+                    <h3 className="text-lg font-semibold text-gray-200 mb-2 flex items-center"><ShieldAlert size={20} className="mr-2 text-[#f59e0b]" /> Insurability Assessment</h3>
+                    <p className="text-3xl font-bold text-[#10b981] mb-1">{insurability.rating} <span className="text-sm font-normal text-gray-400">(Mock Rating)</span></p>
+                    {insurability.issues.length > 0 && (
+                        <ul className="list-disc list-inside text-sm text-yellow-400 space-y-1 mt-2">
+                            {insurability.issues.map((issue, i) => <li key={i}>{issue}</li>)}
+                        </ul>
+                    )}
+                </div>
+                <div className="bg-gray-700/50 p-4 rounded-lg">
+                    <h3 className="text-lg font-semibold text-gray-200 mb-2 flex items-center"><DollarSign size={20} className="mr-2 text-[#00e5ff]" /> Estimated Premium</h3>
+                    <p className="text-3xl font-bold text-gray-100 mb-1">${estimatedPremium.amount.toLocaleString()} <span className="text-sm font-normal text-gray-400">/ year (Mock)</span></p>
+                    <button className={`mt-3 w-full inline-flex items-center justify-center gap-2 px-4 py-2 rounded-md text-white bg-gradient-to-r from-[#0057e7] to-[#00e5ff] transition transform-gpu hover:scale-[1.02] active:scale-95 ${focusRingClasses}`}>
+                        Request Formal Quote
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+};
+
+// New Property Form (Multi-step Placeholder)
+const PropertyForm = ({ onCancel, onSubmit, glassPanelClasses, focusRingClasses }) => {
+    const [step, setStep] = useState(1);
+    const [propertyType, setPropertyType] = useState('real_estate'); // 'real_estate', 'vehicle'
+    const [formData, setFormData] = useState({
+        name: '', address: '', type: 'primary', purchase_price: '', purchase_date: '', description: '',
+        bedrooms: '', bathrooms: '', sqft: '', lot_size: '', year_built: '', // Real Estate specific
+        make: '', model: '', year: '', vin: '', // Vehicle specific
+        photos: [], documents: []
+    });
+
+    const handleChange = (e) => {
+        const { name, value } = e.target;
+        setFormData(prev => ({ ...prev, [name]: value }));
+    };
+    
+    const handleFileChange = (e, fieldName) => {
+        // Mock file handling
+        setFormData(prev => ({ ...prev, [fieldName]: [...prev[fieldName], ...Array.from(e.target.files)] }));
+    };
+
+    const nextStep = () => setStep(prev => prev + 1);
+    const prevStep = () => setStep(prev => prev - 1);
+    
+    const handleSubmit = (e) => {
+        e.preventDefault();
+        // Basic validation or final processing before submitting
+        console.log("Form Data Submitted:", formData);
+        onSubmit(formData); // Pass data to parent
+    };
+
+    // Common input field styling
+    const inputClasses = `w-full p-2.5 bg-gray-700 border border-gray-600 rounded-md outline-none text-gray-200 placeholder-gray-400 ${focusRingClasses} focus:border-transparent`;
+    const labelClasses = "block text-sm font-medium text-gray-300 mb-1.5";
+
+    return (
+        <div className={`${glassPanelClasses} p-8`}>
+            <div className="flex justify-between items-center mb-6">
+                <h2 className="text-2xl font-semibold text-gray-100">Add New Property (Step {step} of 3)</h2>
+                <button onClick={onCancel} className={`inline-flex items-center gap-2 px-4 py-2 rounded-md bg-gray-700 text-gray-100 hover:bg-gray-600 transition-colors ${focusRingClasses}`}>
+                    Cancel
+                </button>
+            </div>
+
+            {/* Progress Bar (simple) */}
+            <div className="w-full bg-gray-700 rounded-full h-2.5 mb-8">
+                <div className="bg-[#0057e7] h-2.5 rounded-full transition-all duration-300" style={{ width: `${(step / 3) * 100}%` }}></div>
+            </div>
+
+            <form onSubmit={handleSubmit} className="space-y-6">
+                {step === 1 && (
+                    <section>
+                        <h3 className="text-xl font-semibold text-gray-200 mb-4">Property Basics</h3>
+                        <div> <label htmlFor="name" className={labelClasses}>Property Name / Nickname</label> <input type="text" name="name" id="name" value={formData.name} onChange={handleChange} className={inputClasses} placeholder="e.g., My Sunnyvale Home" required /> </div>
+                        <div>
+                            <label htmlFor="propertyType" className={labelClasses}>Property Category</label>
+                            <select name="propertyType" id="propertyType" value={propertyType} onChange={(e) => setPropertyType(e.target.value)} className={inputClasses}>
+                                <option value="real_estate">Real Estate</option>
+                                <option value="vehicle">Vehicle</option>
+                                {/* Add other types like 'Valuables', 'Business Asset' etc. */}
+                            </select>
+                        </div>
+                        {propertyType === 'real_estate' && (
+                            <div> <label htmlFor="type" className={labelClasses}>Real Estate Type</label> <select name="type" id="type" value={formData.type} onChange={handleChange} className={inputClasses}> <option value="primary">Primary Residence</option> <option value="secondary">Secondary/Vacation Home</option> <option value="investment">Investment Property</option> <option value="land">Land</option> </select> </div>
+                        )}
+                        {propertyType === 'vehicle' && (
+                             <div> <label htmlFor="type" className={labelClasses}>Vehicle Type</label> <input type="text" name="type" id="type" value={formData.type} onChange={handleChange} className={inputClasses} placeholder="e.g., Sedan, SUV, Motorcycle" /> </div>
+                        )}
+                        <div> <label htmlFor="purchase_price" className={labelClasses}>Purchase Price (Optional)</label> <input type="number" name="purchase_price" id="purchase_price" value={formData.purchase_price} onChange={handleChange} className={inputClasses} placeholder="e.g., 750000" /> </div>
+                        <div> <label htmlFor="purchase_date" className={labelClasses}>Purchase Date (Optional)</label> <input type="date" name="purchase_date" id="purchase_date" value={formData.purchase_date} onChange={handleChange} className={inputClasses} /> </div>
+                        <div> <label htmlFor="description" className={labelClasses}>Description (Optional)</label> <textarea name="description" id="description" value={formData.description} onChange={handleChange} rows="3" className={inputClasses} placeholder="Brief description or notes..."></textarea> </div>
+                    </section>
+                )}
+
+                {step === 2 && (
+                    <section>
+                        <h3 className="text-xl font-semibold text-gray-200 mb-4">Location & Specifics</h3>
+                        {propertyType === 'real_estate' && (
+                            <>
+                                <div> <label htmlFor="address" className={labelClasses}>Full Address</label> <input type="text" name="address" id="address" value={formData.address} onChange={handleChange} className={inputClasses} placeholder="Search with Google Places Autocomplete..." required /> <p className="text-xs text-gray-500 mt-1">Google Places Autocomplete to be integrated here.</p> </div>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div> <label htmlFor="bedrooms" className={labelClasses}>Bedrooms</label> <input type="number" name="bedrooms" id="bedrooms" value={formData.bedrooms} onChange={handleChange} className={inputClasses} /> </div>
+                                    <div> <label htmlFor="bathrooms" className={labelClasses}>Bathrooms</label> <input type="number" name="bathrooms" id="bathrooms" step="0.5" value={formData.bathrooms} onChange={handleChange} className={inputClasses} /> </div>
+                                    <div> <label htmlFor="sqft" className={labelClasses}>Square Footage</label> <input type="number" name="sqft" id="sqft" value={formData.sqft} onChange={handleChange} className={inputClasses} /> </div>
+                                    <div> <label htmlFor="lot_size" className={labelClasses}>Lot Size (Acres)</label> <input type="number" name="lot_size" id="lot_size" step="0.01" value={formData.lot_size} onChange={handleChange} className={inputClasses} /> </div>
+                                    <div> <label htmlFor="year_built" className={labelClasses}>Year Built</label> <input type="number" name="year_built" id="year_built" value={formData.year_built} onChange={handleChange} className={inputClasses} placeholder="YYYY" /> </div>
+                                </div>
+                            </>
+                        )}
+                        {propertyType === 'vehicle' && (
+                            <>
+                                <div> <label htmlFor="make" className={labelClasses}>Make</label> <input type="text" name="make" id="make" value={formData.make} onChange={handleChange} className={inputClasses} required /> </div>
+                                <div> <label htmlFor="model" className={labelClasses}>Model</label> <input type="text" name="model" id="model" value={formData.model} onChange={handleChange} className={inputClasses} required /> </div>
+                                <div> <label htmlFor="year" className={labelClasses}>Year</label> <input type="number" name="year" id="year" value={formData.year} onChange={handleChange} className={inputClasses} placeholder="YYYY" required /> </div>
+                                <div> <label htmlFor="vin" className={labelClasses}>VIN</label> <input type="text" name="vin" id="vin" value={formData.vin} onChange={handleChange} className={inputClasses} required /> </div>
+                            </>
+                        )}
+                    </section>
+                )}
+
+                {step === 3 && (
+                    <section>
+                        <h3 className="text-xl font-semibold text-gray-200 mb-4">Media & Documents</h3>
+                        <div>
+                            <label htmlFor="photos" className={labelClasses}>Upload Photos</label>
+                            <input type="file" name="photos" id="photos" multiple onChange={(e) => handleFileChange(e, 'photos')} className={`w-full text-sm text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-[#0057e7] file:text-white hover:file:bg-[#004abc] ${focusRingClasses}`} />
+                            <p className="text-xs text-gray-500 mt-1">Option to use Google Street View as default (if address provided) coming soon.</p>
+                            {/* Display mock uploaded photos */}
+                            {formData.photos.length > 0 && <div className="mt-2 text-xs text-gray-400">Files selected: {formData.photos.map(f => f.name).join(', ')}</div>}
+                        </div>
+                        <div>
+                            <label htmlFor="documents" className={labelClasses}>Upload Documents (e.g., Purchase Agreement, Title)</label>
+                            <input type="file" name="documents" id="documents" multiple onChange={(e) => handleFileChange(e, 'documents')} className={`w-full text-sm text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-[#0057e7] file:text-white hover:file:bg-[#004abc] ${focusRingClasses}`} />
+                             {formData.documents.length > 0 && <div className="mt-2 text-xs text-gray-400">Files selected: {formData.documents.map(f => f.name).join(', ')}</div>}
+                        </div>
+                    </section>
+                )}
+
+                {/* Navigation Buttons */}
+                <div className="flex justify-between items-center pt-6 border-t border-gray-700">
+                    <button type="button" onClick={onCancel} className={`px-6 py-2.5 rounded-md bg-gray-700 text-gray-100 hover:bg-gray-600 transition-colors ${focusRingClasses}`}> Cancel </button>
+                    <div>
+                        {step > 1 && ( <button type="button" onClick={prevStep} className={`px-6 py-2.5 rounded-md bg-gray-600 text-gray-200 hover:bg-gray-500 transition-colors mr-3 ${focusRingClasses}`}> <ChevronLeft size={18} className="inline mr-1" /> Previous </button> )}
+                        {step < 3 && ( <button type="button" onClick={nextStep} className={`px-6 py-2.5 rounded-md text-white bg-gradient-to-r from-[#0057e7] to-[#00e5ff] transition transform-gpu hover:scale-[1.02] active:scale-95 ${focusRingClasses}`}> Next <ChevronRight size={18} className="inline ml-1" /> </button> )}
+                        {step === 3 && ( <button type="submit" className={`px-6 py-2.5 rounded-md text-white bg-gradient-to-r from-[#10b981] to-[#00e5ff] transition transform-gpu hover:scale-[1.02] active:scale-95 ${focusRingClasses}`}> <FilePlus size={18} className="inline mr-1" /> Add Property </button> )}
+                    </div>
+                </div>
+            </form>
+        </div>
+    );
+};
+
+
+// ***********************************************************************************
+// * END OF NEW PROPERTY TAB COMPONENTS
+// ***********************************************************************************
+
+export default App;
