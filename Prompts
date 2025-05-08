@@ -1,0 +1,113 @@
+Below is my vision for the add / update policy workflow.. analyze it, improve it, and incorporate it. 
+
+**Goal**  
+Incorporate the “End-to-End Workflow Spec · Add & Update Policy” (attached below) into the existing ClaimGuardian Next.js 18 App-Router monorepo. Produce every file (new or edited) required so the workflow is fully functional, secure, and production-ready.
+
+**Must-Do**  **Analyse the vision**  below to understand vision for how to create End-to-End Workflow Spec · Add & Update Policy.
+
+(Integrates with the “Policies” tab & AI/Doc-processing pipeline already defined.)
+VISION: """1 · Entry Points
+Action  UI Trigger  Route / Component  Purpose
+Add Policy  “+ Add / Upload Policy” button in Top Bar of Policies tab or “Link Policy” CTA on a Property-Details drawer  /policies/new (modal wizard)  Create a brand-new policy and link it to an asset
+Update / Renew  “Upload New Version” quick action on a PolicyCard or “Renew Policy” badge  /policies/[id]/upload (wizard seeded with old data)  Replace or append a new version, keep history
+…
+With this flow users can securely ingest new or updated policies, validate AI-extracted data, and keep every version traceable—zero ambiguity, maximum automation, and future-proof scalability. 
+
+End-to-End Workflow Spec · Add & Update Policy
+
+(Integrates with the “Policies” tab & AI/Doc-processing pipeline already defined.)
+
+
+1 · Entry Points
+Action
+UI Trigger
+Route / Component
+Purpose
+Add Policy
+“+ Add / Upload Policy” button in Top Bar of Policiestab or “Link Policy” CTA on a Property-Details drawer
+/policies/new (modal wizard)<PolicyUploadWizard />
+Create a brand-new policy and link it to an asset
+Update / Renew
+“Upload New Version” quick action on a PolicyCard or“Renew Policy” badge
+/policies/[id]/upload(wizard seeded with old data)
+Replace or append a new version, keep history
+Modal vs Page
+• Desktop ➜ centered modal (90 vh) inside dashboard layout.
+• Mobile ➜ dedicated route (/policies/new) with stepper header; back-button aware.
+
+
+
+
+2 · Wizard Stepper & UI States
+┌───────────────────────────────────────────────────────────┐
+│ 1. Upload & Parse  →  2. Confirm Basics  →  3. Coverages │
+│   (file/select)        (link property)       (limits)    │
+└───────────────────────────────────────────────────────────┘
+
+
+Step 1 — Upload & Parse
+Element
+Behaviour
+FileDropZone
+Accepts PDF/DOCX (≤ 50 MB), multiple allowed. Shows progress, virus-scan status (ClamAV Lambda or S3-Event).
+AI Parse Button
+Disabled until at least one file complete. Calls /api/policies/parse (streaming SSE). Visual loading skeleton shows extracted tokens live.
+Parse Preview Pane
+Extracted policyNumber, carrier, effectiveDate, expirationDate, section titles, coverage table stub.
+Failure Path
+If parse confidence < 60 % ➜ show Manual Entry CTA → jump to Step 2 with blank fields.
+‘Next’
+Valid only when policyNumber + carrier exist.
+
+
+Step 2 — Confirm Basics & Link Property (example)
+Field
+Source
+Validation
+Policy Number
+AI pre-filled
+Regex + uniqueness per user
+Carrier
+AI listpicker (logo)
+required
+Category
+Dropdown (Homeowners, Auto…)
+required
+Linked Property
+Combobox → /api/properties/search
+required • fallback “Quick-Add Property” inline mini-form
+Premium (€)
+AI or manual
+≥ 0
+Effective / Expiration
+AI or date-picker; warn if exp. < today
+required
+Description
+textarea
+optional
+Autosave draft (policies row status = draft) on field blur.
+
+
+
+Step 3 — Coverage Limits & Deductibles
+UI
+Logic
+CoverageTableEditor renders rows from AI JSON.
+Each row: Coverage, Limit, Deductible, Icon, AI confidence%.
+Add Row button
+Supplies type-ahead coverage list (Dwelling, Liability, Collision…).
+AI Gap Chip
+Column badge (⚠︎ Under-insured). Calculated in real-time by runCoverageGapCheck() hook.
+Bulk Paste
+Multi-line CSV paste auto splits into rows.
+‘Back’, ‘Save Draft’, ‘Finish & Activate’ buttons
+Final save validates Zod schema → sets status="active"; triggers vectorizePolicy(policy.id) queue task.
+
+
+3 · Update / Renewal Flow
+
+User on Policy details → clicks Upload New Version.
+Wizard opens Step 0 – Version Choice:
+• Replace (supersede)  • Renewal (same number, new dates)  • Endorsement (mid-term change)
+The Upload & Parse step seeds fields with previous version; diff-view column highlights changes in Step 2/3.
+On finish, old snapshot saved to PolicyVersion, policyId stays constant, versionNo++, status="active", previousVersionId pointer for rollback."""
